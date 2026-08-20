@@ -1,3 +1,6 @@
+import Login from './Login'
+import { BASE } from './api'
+
 const SERVICIOS = [
   { icon: '💜', title: 'Acompañamiento', text: 'Apoyo emocional y seguimiento personalizado para cada mujer que llega al centro.' },
   { icon: '⚖️', title: 'Orientación legal', text: 'Asesoría gratuita sobre derechos, denuncias y procesos de protección.' },
@@ -28,9 +31,11 @@ export default function App() {
         ))}
       </section>
 
-      <footer>
-        API: {import.meta.env.VITE_API_BASE_URL || 'no configurada'}
-      </footer>
+      <section className="cards">
+        <Login />
+      </section>
+
+      <footer>API: {BASE}</footer>
     </div>
   )
 }
