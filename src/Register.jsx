@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { login } from './api'
+import { register } from './api'
 
-export default function Login({ onLogin, onGoToRegister }) {
+export default function Register({ onRegister, onGoToLogin }) {
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [estado, setEstado] = useState({ cargando: false })
@@ -10,9 +11,9 @@ export default function Login({ onLogin, onGoToRegister }) {
     e.preventDefault()
     setEstado({ cargando: true })
     try {
-      const sesion = await login(email, password)
+      const sesion = await register(name, email, password)
       setEstado({ cargando: false })
-      if (onLogin) onLogin(sesion)
+      if (onRegister) onRegister(sesion)
     } catch (err) {
       setEstado({ cargando: false, error: err.message })
     }
@@ -20,7 +21,17 @@ export default function Login({ onLogin, onGoToRegister }) {
 
   return (
     <form className="card login" onSubmit={onSubmit}>
-      <h3>Iniciar sesión</h3>
+      <h3>Crear cuenta</h3>
+      <label>
+        Nombre completo
+        <input
+          type="text"
+          required
+          value={name}
+          autoComplete="name"
+          onChange={(e) => setName(e.target.value)}
+        />
+      </label>
       <label>
         Correo
         <input
@@ -36,19 +47,21 @@ export default function Login({ onLogin, onGoToRegister }) {
         <input
           type="password"
           required
+          minLength={8}
           value={password}
-          autoComplete="current-password"
+          autoComplete="new-password"
           onChange={(e) => setPassword(e.target.value)}
         />
       </label>
+      <p className="hint">Mínimo 8 caracteres, con al menos una letra y un número.</p>
       {estado.error && <p className="error">{estado.error}</p>}
       <button type="submit" disabled={estado.cargando}>
-        {estado.cargando ? 'Entrando…' : 'Entrar'}
+        {estado.cargando ? 'Creando cuenta…' : 'Crear cuenta'}
       </button>
       <p className="foot-link">
-        ¿No tenés cuenta?{' '}
-        <a href="#" onClick={(e) => { e.preventDefault(); onGoToRegister?.() }}>
-          Registrate
+        ¿Ya tenés cuenta?{' '}
+        <a href="#" onClick={(e) => { e.preventDefault(); onGoToLogin?.() }}>
+          Iniciá sesión
         </a>
       </p>
     </form>
