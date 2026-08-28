@@ -1,4 +1,12 @@
-const BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/v1'
+/// En produccion la API vive en el MISMO dominio que la web (Caddy manda
+/// /api/v1 a Node), asi que el valor por defecto es una ruta relativa: dejar
+/// aqui `http://localhost:3000` significaba que el sitio publicado intentaba
+/// llamar al portatil de quien compilo —el navegador ademas lo bloquea por
+/// contenido mixto— y el login no llegaba a salir nunca.
+/// `VITE_API_BASE_URL` sigue mandando cuando la API esta en otro dominio.
+const BASE =
+  import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.DEV ? 'http://localhost:3000/api/v1' : '/api/v1')
 
 /// El backend exige un deviceId por sesion; se guarda para no abrir una nueva
 /// sesion de dispositivo en cada login.
@@ -22,10 +30,14 @@ async function fetchApi(path, options = {}) {
   return json.data
 }
 
-export async function login(email, password) {
+/// `identifier` es email **o** CI: la API decide cual es por el `@` y expone un
+/// solo campo. Mandar `email` devolvia 400 —el ValidationPipe rechaza campos
+/// que no estan en el DTO— y el formulario mostraba "La peticion no paso la
+/// validacion" con cualquier contrasena, correcta o no.
+export async function login(identifier, password) {
   return fetchApi('/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ email, password, deviceId: deviceId() }),
+    body: JSON.stringify({ identifier, password, deviceId: deviceId() }),
   })
 }
 

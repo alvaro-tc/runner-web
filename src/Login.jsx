@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { login } from './api'
 
 export default function Login({ onLogin, onGoToRegister }) {
-  const [email, setEmail] = useState('')
+  // La API entra por email o por CI con un unico campo, asi que el formulario
+  // pide "identificador" y no email: un `type="email"` impedia escribir una CI.
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [estado, setEstado] = useState({ cargando: false })
 
@@ -10,7 +12,7 @@ export default function Login({ onLogin, onGoToRegister }) {
     e.preventDefault()
     setEstado({ cargando: true })
     try {
-      const sesion = await login(email, password)
+      const sesion = await login(identifier.trim(), password)
       setEstado({ cargando: false })
       if (onLogin) onLogin(sesion)
     } catch (err) {
@@ -33,14 +35,14 @@ export default function Login({ onLogin, onGoToRegister }) {
         </div>
         <form onSubmit={onSubmit} className="auth-form">
           <label>
-            Correo electrónico
+            Correo electrónico o CI
             <input
-              type="email"
+              type="text"
               required
-              value={email}
+              value={identifier}
               autoComplete="username"
-              placeholder="tu@correo.com"
-              onChange={e => setEmail(e.target.value)}
+              placeholder="tu@correo.com o 1234567 LP"
+              onChange={e => setIdentifier(e.target.value)}
             />
           </label>
           <label>
