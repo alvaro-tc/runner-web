@@ -1,33 +1,67 @@
-export default function Header({ sesion, onLogout, seccion, onSeccionChange }) {
-  return (
-    <header className="topbar">
-      <div className="brand">
-        <span className="logo-dots"><span /><span /></span>
-        <strong>CAM Runners</strong>
-      </div>
+import { useState, useEffect } from 'react'
 
-      {sesion ? (
-        <div className="user">
-          <span className="role-badge">{sesion.user.role === 'admin' ? 'Admin' : 'Corredor/a'}</span>
-          <span>{sesion.user.name}</span>
-          <button className="btn-logout" onClick={onLogout}>Salir</button>
+export default function Header({ sesion, onLogout, onSeccionChange }) {
+  const [scrolled, setScrolled] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  useEffect(() => {
+    function onScroll() { setScrolled(window.scrollY > 20) }
+    window.addEventListener('scroll', onScroll)
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  function irAcceso() {
+    onSeccionChange?.('acceso')
+    setMenuOpen(false)
+  }
+
+  return (
+    <header className={`topbar${scrolled ? ' topbar-scrolled' : ''}`} id="top">
+      <div className="topbar-inner container">
+        <a className="brand" href="#top" onClick={e => { e.preventDefault(); onSeccionChange?.('inicio') }}>
+          <span className="brand-icon">🏃‍♀️</span>
+          <div className="brand-text">
+            <strong>CAM</strong>
+            <span>Maratón de la Mujer</span>
+          </div>
+        </a>
+
+        {!sesion && (
+          <nav className={`topbar-nav${menuOpen ? ' nav-open' : ''}`}>
+            <a href="#nosotras" onClick={() => setMenuOpen(false)}>Nosotras</a>
+            <a href="#carreras" onClick={() => setMenuOpen(false)}>Carreras</a>
+            <a href="#recursos" onClick={() => setMenuOpen(false)}>Recursos</a>
+            <a href="#contacto" onClick={() => setMenuOpen(false)}>Contacto</a>
+          </nav>
+        )}
+
+        <div className="topbar-actions">
+          {sesion ? (
+            <>
+              <span className={`role-badge ${sesion.user.role === 'admin' ? 'badge-admin' : 'badge-runner'}`}>
+                {sesion.user.role === 'admin' ? '⚙️ Admin' : '🏃‍♀️ Corredora'}
+              </span>
+              <span className="user-name">{sesion.user.name}</span>
+              <button className="btn-ghost-sm" onClick={onLogout}>Salir</button>
+            </>
+          ) : (
+            <>
+              <button className="btn-outline-sm" onClick={irAcceso}>Iniciar sesión</button>
+              <button className="btn-primary-sm" onClick={irAcceso}>Registrarse</button>
+            </>
+          )}
         </div>
-      ) : (
-        <nav className="topbar-nav">
+
+        {!sesion && (
           <button
-            className={`topbar-tab${seccion === 'inicio' ? ' active' : ''}`}
-            onClick={() => onSeccionChange?.('inicio')}
+            className={`hamburger${menuOpen ? ' open' : ''}`}
+            onClick={() => setMenuOpen(o => !o)}
+            aria-label="Menú"
           >
-            Inicio
+            <span /><span /><span />
           </button>
-          <button
-            className={`topbar-tab${seccion === 'acceso' ? ' active' : ''}`}
-            onClick={() => onSeccionChange?.('acceso')}
-          >
-            Iniciar sesión
-          </button>
-        </nav>
-      )}
+        )}
+      </div>
     </header>
   )
 }
