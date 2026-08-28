@@ -94,4 +94,32 @@ export async function confirmTransfer(paymentId, token) {
   })
 }
 
+/// Solicitud publica (sin sesion) de borrado de cuenta desde la web.
+/// El backend responde con un correo de verificacion: la cuenta solo se borra
+/// cuando el usuario confirma el enlace, para que nadie pueda pedir el borrado
+/// de una cuenta ajena.
+///
+/// No distingue si la cuenta existe: un 404 se trata como exito para no
+/// convertir el formulario en un detector de correos registrados.
+export async function requestAccountDeletion(email, reason) {
+  const res = await fetch(`${BASE}/account-deletion-requests`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, reason: reason || undefined }),
+  })
+
+  if (res.status === 404) return { ok: true }
+  if (res.ok) return { ok: true }
+
+  // El endpoint es publico y puede responder sin cuerpo JSON (proxy, 502, HTML).
+  let message = `Error ${res.status}`
+  try {
+    const json = await res.json()
+    message = json?.error?.message || message
+  } catch {
+    // Sin cuerpo JSON: nos quedamos con el codigo de estado.
+  }
+  throw new Error(message)
+}
+
 export { BASE }
