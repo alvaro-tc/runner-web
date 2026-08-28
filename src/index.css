@@ -30,7 +30,7 @@ button{cursor:pointer;font-family:inherit;border:none;background:none}
 .topbar-scrolled{background:rgba(255,255,255,.95);backdrop-filter:blur(12px);box-shadow:0 2px 20px rgba(123,47,190,.12)}
 .topbar-inner{display:flex;align-items:center;gap:1.5rem}
 .brand{display:flex;align-items:center;gap:.6rem;text-decoration:none;color:var(--dark)}
-.brand-icon{font-size:1.6rem}
+.brand-icon{width:2.2rem;height:2.2rem;object-fit:contain;border-radius:var(--radius-btn)}
 .brand-text{display:flex;flex-direction:column;line-height:1.1}
 .brand-text strong{font-size:1rem;font-weight:800;color:var(--purple)}
 .brand-text span{font-size:.68rem;color:var(--pink);font-weight:600;letter-spacing:.05em}

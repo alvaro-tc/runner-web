@@ -19,7 +19,7 @@ export default function Header({ sesion, onLogout, onSeccionChange }) {
     <header className={`topbar${scrolled ? ' topbar-scrolled' : ''}`} id="top">
       <div className="topbar-inner container">
         <a className="brand" href="#top" onClick={e => { e.preventDefault(); onSeccionChange?.('inicio') }}>
-          <span className="brand-icon">🏃‍♀️</span>
+          <img className="brand-icon" src="/logo.png" alt="CAM" />
           <div className="brand-text">
             <strong>CAM</strong>
             <span>Maratón de la Mujer</span>
