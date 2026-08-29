@@ -25,13 +25,27 @@ export default function App() {
   }
 
   function irAcceso() {
-    setSeccion('acceso')
+    setSeccion('auth')
     setVista('login')
+  }
+
+  // Intercepta las órdenes del Header para enrutar correctamente
+  function manejarNavegacion(nuevaSeccion) {
+    if (nuevaSeccion === 'acceso') {
+      setSeccion('auth')
+      setVista('login')
+    } else if (nuevaSeccion === 'registro') {
+      setSeccion('auth')
+      setVista('register')
+    } else {
+      setSeccion(nuevaSeccion)
+    }
   }
 
   function renderContent() {
     if (!sesion) {
-      if (seccion === 'acceso') {
+      // Ahora escucha la sección unificada 'auth'
+      if (seccion === 'auth' || seccion === 'acceso') {
         return (
           <main>
             {vista === 'login' ? (
@@ -69,7 +83,7 @@ export default function App() {
         sesion={sesion}
         onLogout={cerrarSesion}
         seccion={seccion}
-        onSeccionChange={setSeccion}
+        onSeccionChange={manejarNavegacion}
       />
       {renderContent()}
     </div>

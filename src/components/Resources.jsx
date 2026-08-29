@@ -1,20 +1,20 @@
 const RECURSOS = [
   {
-    icon: '🏃‍♀️',
+    icon: '01',
     titulo: 'Plan de entrenamiento',
-    desc: 'Guías de entrenamiento diseñadas para mujeres de todos los niveles. Desde cero hasta completar tu primera carrera.',
+    desc: 'Guías de entrenamiento estructuradas para diferentes niveles físicos. Empieza a prepararte de forma segura.',
     tag: 'Próximamente',
   },
   {
-    icon: '🥗',
-    titulo: 'Nutrición para corredoras',
-    desc: 'Consejos de alimentación adaptados a las necesidades de la mujer deportista. Come bien, corre mejor.',
+    icon: '02',
+    titulo: 'Nutrición deportiva',
+    desc: 'Pautas de alimentación adaptadas a las exigencias de la carrera, enfocadas en mejorar tu rendimiento y recuperación.',
     tag: 'Próximamente',
   },
   {
-    icon: '🧘‍♀️',
-    titulo: 'Bienestar emocional',
-    desc: 'Recursos sobre salud mental, manejo del estrés y el running como herramienta de empoderamiento personal.',
+    icon: '03',
+    titulo: 'Preparación integral',
+    desc: 'Materiales enfocados en la concentración, el manejo de la ansiedad pre-carrera y el bienestar emocional.',
     tag: 'Próximamente',
   },
 ]
@@ -25,13 +25,13 @@ export default function Resources() {
       <div className="container">
         <div className="section-header">
           <span className="section-eyebrow">Recursos</span>
-          <h2 className="section-title">Para corredoras de todos los niveles</h2>
-          <p className="section-subtitle">Materiales de apoyo para que llegues a la línea de llegada en tu mejor forma</p>
+          <h2 className="section-title">Preparación oficial</h2>
+          <p className="section-subtitle">Material descargable diseñado por profesionales para acompañar tu proceso de entrenamiento.</p>
         </div>
         <div className="resources-grid">
           {RECURSOS.map(r => (
             <article key={r.titulo} className="resource-card">
-              <div className="resource-icon">{r.icon}</div>
+              <div className="resource-icon" style={{ fontWeight: '800', color: 'var(--pink)', fontSize: '1.8rem' }}>{r.icon}</div>
               <span className="resource-tag">{r.tag}</span>
               <h3>{r.titulo}</h3>
               <p>{r.desc}</p>

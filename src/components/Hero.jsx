@@ -7,21 +7,20 @@ export default function Hero({ onAcceso }) {
         <div className="hero-circle hero-circle-3" />
       </div>
       <div className="hero-content">
-        <span className="hero-eyebrow">🏃‍♀️ CAM · Maratón de la Mujer</span>
+        <span className="hero-eyebrow">CAM · Maratón de la Mujer</span>
         <h1 className="hero-title">
           Corre por tu poder.<br />
           <span className="hero-title-accent">Corre por tu causa.</span>
         </h1>
         <p className="hero-subtitle">
-          Únete a la maratón solidaria del Centro de Apoyo a la Mujer. Cada kilómetro que corres
-          contribuye a apoyar a mujeres que necesitan acompañamiento, orientación y una comunidad.
+          Únete a la maratón solidaria del Centro de Apoyo a la Mujer. Cada kilómetro recorrido contribuye a brindar acompañamiento y orientación a mujeres en situación de vulnerabilidad.
         </p>
         <div className="hero-actions">
           <button className="btn-primary" onClick={() => onAcceso?.()}>
-            Inscríbete ahora ✨
+            Inscribirme ahora
           </button>
           <a className="btn-ghost" href="#nosotras">
-            Conoce más →
+            Conocer más
           </a>
         </div>
         <div className="hero-stats">
@@ -30,11 +29,11 @@ export default function Hero({ onAcceso }) {
           </div>
           <div className="hero-stat-divider" />
           <div className="hero-stat-item">
-            <strong>5K &amp; 10K</strong><span>Para todas</span>
+            <strong>5K &amp; 10K</strong><span>Categorías</span>
           </div>
           <div className="hero-stat-divider" />
           <div className="hero-stat-item">
-            <strong>💜</strong><span>Por el CAM</span>
+            <strong>100%</strong><span>Beneficencia</span>
           </div>
         </div>
       </div>
