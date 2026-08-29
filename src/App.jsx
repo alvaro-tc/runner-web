@@ -4,6 +4,7 @@ import Login from './Login'
 import Register from './Register'
 import AdminDashboard from './AdminDashboard'
 import RunnerDashboard from './RunnerDashboard'
+import { esStaff } from './roles'
 import Hero from './components/Hero'
 import AboutUs from './components/AboutUs'
 import Races from './components/Races'
@@ -55,7 +56,7 @@ export default function App() {
       )
     }
 
-    if (sesion.user.role === 'admin') {
+    if (esStaff(sesion.user.role)) {
       return <AdminDashboard sesion={sesion} onLogout={cerrarSesion} />
     }
 

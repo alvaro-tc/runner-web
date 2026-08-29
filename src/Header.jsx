@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { esStaff, etiquetaRol } from './roles'
 
 export default function Header({ sesion, onLogout, onSeccionChange }) {
   const [scrolled, setScrolled] = useState(false)
@@ -38,8 +39,8 @@ export default function Header({ sesion, onLogout, onSeccionChange }) {
         <div className="topbar-actions">
           {sesion ? (
             <>
-              <span className={`role-badge ${sesion.user.role === 'admin' ? 'badge-admin' : 'badge-runner'}`}>
-                {sesion.user.role === 'admin' ? '⚙️ Admin' : '🏃‍♀️ Corredora'}
+              <span className={`role-badge ${esStaff(sesion.user.role) ? 'badge-admin' : 'badge-runner'}`}>
+                {etiquetaRol(sesion.user.role)}
               </span>
               <span className="user-name">{sesion.user.name}</span>
               <button className="btn-ghost-sm" onClick={onLogout}>Salir</button>
