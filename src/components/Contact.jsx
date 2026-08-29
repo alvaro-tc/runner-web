@@ -20,45 +20,48 @@ export default function Contact() {
           <div className="contact-info">
             <span className="section-eyebrow">Contacto</span>
             <h2 className="section-title">¿Tienes dudas?<br />Escríbenos</h2>
-            <p>Estamos para apoyarte en cada paso. Si tienes preguntas sobre las carreras, la inscripción o el CAM, no dudes en escribirnos.</p>
+            <p>Estamos para apoyarte. Si tienes consultas sobre las inscripciones, la entrega de kits o los programas del CAM, nuestro equipo está listo para orientarte.</p>
             <div className="contact-items">
               <div className="contact-item">
-                <span>📧</span><span>contacto@cam-maraton.org</span>
+                <span style={{ fontWeight: 700, color: 'var(--purple)' }}>Email:</span>
+                <span>contacto@cam-maraton.org</span>
               </div>
               <div className="contact-item">
-                <span>📞</span><span>Línea de ayuda disponible todos los días</span>
+                <span style={{ fontWeight: 700, color: 'var(--purple)' }}>Tel:</span>
+                <span>Línea de atención de 08:00 a 18:00 hrs.</span>
               </div>
               <div className="contact-item">
-                <span>📍</span><span>Centro de Apoyo a la Mujer - CAM</span>
+                <span style={{ fontWeight: 700, color: 'var(--purple)' }}>Sede:</span>
+                <span>Oficinas del Centro de Apoyo a la Mujer (CAM)</span>
               </div>
             </div>
           </div>
           <div className="contact-form-wrap">
             {enviado ? (
               <div className="contact-success">
-                <div className="success-icon">💜</div>
+                <div className="success-icon" style={{ color: 'var(--purple)', fontSize: '3.5rem' }}>✓</div>
                 <h3>¡Mensaje recibido!</h3>
-                <p>Gracias por escribirnos. Te responderemos pronto.</p>
+                <p>Gracias por contactarnos. Nuestro equipo te responderá a la brevedad posible.</p>
                 <button className="btn-secondary" onClick={() => { setEnviado(false); setForm({ nombre: '', email: '', mensaje: '' }) }}>
-                  Enviar otro mensaje
+                  Enviar otra consulta
                 </button>
               </div>
             ) : (
               <form className="contact-form" onSubmit={handleSubmit}>
                 <label>
                   Nombre completo
-                  <input type="text" name="nombre" required value={form.nombre} onChange={handleChange} placeholder="Tu nombre" />
+                  <input type="text" name="nombre" required value={form.nombre} onChange={handleChange} placeholder="Ej. Ana Rodríguez" />
                 </label>
                 <label>
                   Correo electrónico
-                  <input type="email" name="email" required value={form.email} onChange={handleChange} placeholder="tu@correo.com" />
+                  <input type="email" name="email" required value={form.email} onChange={handleChange} placeholder="usuario@correo.com" />
                 </label>
                 <label>
                   Mensaje
                   <textarea name="mensaje" required rows={4} value={form.mensaje} onChange={handleChange} placeholder="¿En qué podemos ayudarte?" />
                 </label>
                 <button type="submit" className="btn-primary">
-                  Enviar mensaje 💜
+                  Enviar mensaje
                 </button>
               </form>
             )}

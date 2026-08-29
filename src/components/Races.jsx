@@ -6,20 +6,18 @@ const CARRERAS = [
     nivel: 'Principiante',
     nivelColor: 'nivel-verde',
     fecha: 'Fecha por confirmar',
-    descripcion: 'Perfecta para quienes se inician en el running. Un recorrido accesible para todas las mujeres, sin importar su condición física.',
+    descripcion: 'Un recorrido participativo y accesible. Ideal para quienes se inician en el running o prefieren caminar.',
     incluye: ['Número de dorsal', 'Medalla finisher', 'Hidratación en ruta'],
-    emoji: '🏅',
   },
   {
     id: '10k',
     distancia: '10K',
-    nombre: 'Carrera del Empoderamiento',
+    nombre: 'Carrera Competitiva',
     nivel: 'Intermedia',
     nivelColor: 'nivel-rosa',
     fecha: 'Fecha por confirmar',
-    descripcion: 'Un desafío que pone a prueba tu resistencia y determinación. Para mujeres que ya tienen experiencia en carreras.',
+    descripcion: 'Desafío cronometrado para poner a prueba tu resistencia. Orientado a corredoras con experiencia previa.',
     incluye: ['Número de dorsal', 'Medalla finisher', 'Camiseta oficial', 'Hidratación en ruta'],
-    emoji: '🏆',
   },
 ]
 
@@ -29,15 +27,14 @@ export default function Races({ onAcceso }) {
       <div className="races-bg" />
       <div className="container">
         <div className="section-header">
-          <span className="section-eyebrow">Nuestras carreras</span>
+          <span className="section-eyebrow">Modalidades</span>
           <h2 className="section-title">Elige tu distancia</h2>
-          <p className="section-subtitle">Todas las distancias son para mujeres de todas las edades y niveles. ¡Lo importante es participar!</p>
+          <p className="section-subtitle">Opciones adaptadas a diferentes niveles de preparación física. Tu participación es lo que realmente importa.</p>
         </div>
         <div className="races-grid">
           {CARRERAS.map(c => (
             <article key={c.id} className="race-card">
               <div className="race-card-top">
-                <span className="race-emoji">{c.emoji}</span>
                 <div className="race-dist">{c.distancia}</div>
                 <span className={`nivel-badge ${c.nivelColor}`}>{c.nivel}</span>
               </div>
@@ -49,9 +46,9 @@ export default function Races({ onAcceso }) {
                     <li key={item}><span>✓</span> {item}</li>
                   ))}
                 </ul>
-                <div className="race-fecha">📅 {c.fecha}</div>
+                <div className="race-fecha">{c.fecha}</div>
                 <button className="btn-primary race-btn" onClick={() => onAcceso?.()}>
-                  Inscribirse →
+                  Inscribirse
                 </button>
               </div>
             </article>
