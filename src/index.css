@@ -284,3 +284,465 @@ button{cursor:pointer;font-family:inherit;border:none;background:none}
   .legal-form{padding:1.15rem}
   .legal-form button[type=submit]{width:100%}
 }
+
+/* ═══ BUSCADOR (usa variables existentes) ═══ */
+.dash-search-bar {
+  display: flex;
+  gap: .6rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.dash-search-input {
+  padding: .5rem 1rem;
+  border: 2px solid #eee;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: .85rem;
+  min-width: 220px;
+  transition: border-color .2s;
+}
+
+.dash-search-input:focus {
+  outline: none;
+  border-color: var(--pink);
+  box-shadow: 0 0 0 4px rgba(233,30,99,.08);
+}
+
+/* ═══ PAGINACIÓN ═══ */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 2rem 2rem;
+}
+
+.pagination-info {
+  font-size: .85rem;
+  color: var(--gray);
+  font-weight: 600;
+}
+
+.pagination button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+/* ═══ MODAL (usa variables existentes) ═══ */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.modal {
+  background: var(--white);
+  border-radius: var(--radius);
+  max-width: 520px;
+  width: 90%;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 2px solid var(--gray-soft);
+  background: linear-gradient(135deg, var(--purple), var(--pink));
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--white);
+}
+
+.modal-close {
+  background: rgba(255,255,255,.2);
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: var(--white);
+  padding: .3rem .7rem;
+  border-radius: var(--radius-sm);
+  transition: background .2s;
+}
+
+.modal-close:hover {
+  background: rgba(255,255,255,.35);
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.modal-footer {
+  padding: 1.25rem 1.5rem;
+  border-top: 2px solid var(--gray-soft);
+  display: flex;
+  justify-content: flex-end;
+  gap: .75rem;
+}
+
+/* ═══ FORMULARIO DENTRO DEL MODAL ═══ */
+.form-label {
+  display: block;
+  margin-bottom: 1rem;
+  font-size: .85rem;
+  font-weight: 600;
+  color: #555;
+}
+
+.form-input {
+  width: 100%;
+  padding: .65rem .9rem;
+  margin-top: .35rem;
+  border: 2px solid #eee;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: .9rem;
+  transition: border-color .2s;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--pink);
+  box-shadow: 0 0 0 4px rgba(233,30,99,.08);
+}
+
+textarea.form-input {
+  resize: vertical;
+  min-height: 70px;
+}
+
+.file-selected {
+  color: #43a047;
+  font-weight: 600;
+  font-size: .85rem;
+  margin-top: .5rem;
+}
+
+/* ═══ SELECTOR DE MARATÓN ═══ */
+.marathon-selector {
+  padding: 0 2rem 1.5rem;
+}
+
+.marathon-selector h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--dark);
+  margin-bottom: 1rem;
+}
+
+.marathon-list {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+}
+
+.marathon-card {
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+  padding: 1rem 1.25rem;
+  border: 2px solid #eee;
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  cursor: pointer;
+  transition: all .2s;
+  text-align: left;
+  font-family: inherit;
+}
+
+.marathon-card:hover {
+  border-color: var(--pink);
+  background: #fdf0f5;
+  transform: translateX(4px);
+}
+
+.marathon-card-name {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--dark);
+}
+
+.marathon-card-info {
+  display: flex;
+  gap: 1rem;
+  font-size: .82rem;
+  color: var(--gray);
+  font-weight: 500;
+  flex-wrap: wrap;
+}
+
+.selected-marathon-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: .9rem 1.25rem;
+  background: var(--gray-soft);
+  border-radius: var(--radius-sm);
+  margin: 0 2rem 1.25rem;
+  font-weight: 600;
+  color: var(--dark);
+}
+
+/* ═══ PREGUNTAS CAM (usa variables) ═══ */
+.cam-questions {
+  margin-top: 1.25rem;
+  padding: 1.25rem;
+  background: #fdf0f5;
+  border-radius: var(--radius-sm);
+  border: 2px solid rgba(233,30,99,.15);
+}
+
+.cam-questions h3 {
+  margin: 0 0 1rem 0;
+  font-size: .95rem;
+  font-weight: 700;
+  color: var(--pink);
+}
+
+.cam-question {
+  margin-bottom: 1rem;
+}
+
+.cam-question:last-child {
+  margin-bottom: 0;
+}
+
+.cam-question-label {
+  font-weight: 600;
+  font-size: .85rem;
+  margin-bottom: .5rem;
+  color: #555;
+}
+
+.cam-options {
+  display: flex;
+  gap: 1.25rem;
+}
+
+.cam-option {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  cursor: pointer;
+  font-size: .85rem;
+  font-weight: 500;
+  color: #555;
+}
+
+.cam-option input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--pink);
+}
+
+/* ═══ PAGO QR ═══ */
+.payment-qr-section {
+  text-align: center;
+  padding: 1.5rem;
+  background: #fdf0f5;
+  border-radius: var(--radius-sm);
+  margin: 1.25rem 0;
+  border: 2px solid rgba(233,30,99,.2);
+}
+
+.payment-qr-section h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--pink);
+}
+
+.payment-qr-image {
+  max-width: 220px;
+  max-height: 220px;
+  border-radius: var(--radius-sm);
+  border: 2px solid #eee;
+  margin: .5rem auto;
+}
+
+.payment-amount {
+  font-size: 1rem;
+  margin: .75rem 0;
+  color: #555;
+}
+
+.payment-amount strong {
+  color: var(--pink);
+  font-size: 1.3rem;
+}
+
+.payment-instructions {
+  background: var(--white);
+  padding: 1rem;
+  border-radius: var(--radius-sm);
+  margin-top: 1rem;
+  text-align: left;
+  font-size: .85rem;
+  color: #555;
+}
+
+.payment-bank-section {
+  text-align: center;
+  padding: 1.5rem;
+  background: #e3f2fd;
+  border-radius: var(--radius-sm);
+  margin: 1.25rem 0;
+  border: 2px solid #90caf9;
+}
+
+.payment-bank-section h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1565c0;
+}
+
+/* ═══ ACCIONES EN TABLA ═══ */
+
+
+.btn-danger-sm {
+  padding: .4rem .9rem;
+  background: #f44336;
+  color: var(--white);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: .8rem;
+  font-family: inherit;
+  border: none;
+  cursor: pointer;
+  transition: .2s;
+}
+
+.btn-danger-sm:hover {
+  background: #d32f2f;
+}
+
+.btn-outline {
+  padding: .65rem 1.5rem;
+  color: var(--purple);
+  border: 2px solid var(--purple);
+  border-radius: var(--radius-btn);
+  font-weight: 600;
+  font-size: .9rem;
+  font-family: inherit;
+  background: none;
+  cursor: pointer;
+  transition: .2s;
+}
+
+.btn-outline:hover {
+  background: var(--purple);
+  color: var(--white);
+}
+
+/* ─── Botones de acciones en tabla (estilo limpio) ─── */
+.actions-cell {
+  display: flex;
+  gap: .4rem;
+  align-items: center;
+}
+
+.actions-cell .btn-outline-sm {
+  padding: .35rem .75rem;
+  font-size: .75rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--purple);
+  color: var(--purple);
+  background: white;
+  cursor: pointer;
+  transition: all .2s;
+  white-space: nowrap;
+}
+
+.actions-cell .btn-outline-sm:hover {
+  background: var(--purple);
+  color: white;
+}
+
+.actions-cell .btn-danger-sm {
+  padding: .35rem .75rem;
+  font-size: .75rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  background: #fff0f0;
+  color: #c62828;
+  border: 2px solid #ef9a9a;
+  cursor: pointer;
+  transition: all .2s;
+  white-space: nowrap;
+}
+
+.actions-cell .btn-danger-sm:hover {
+  background: #c62828;
+  color: white;
+  border-color: #c62828;
+}
+
+
+/* ─── Botones de acciones (panel admin) ─── */
+.actions-cell {
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+}
+
+.actions-cell .btn-outline-sm {
+  padding: .4rem .9rem;
+  font-size: .78rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--purple);
+  color: var(--purple);
+  background: white;
+  cursor: pointer;
+  transition: all .2s;
+  white-space: nowrap;
+  letter-spacing: .02em;
+}
+
+.actions-cell .btn-outline-sm:hover {
+  background: var(--purple);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(107, 63, 160, .2);
+}
+
+.actions-cell .btn-danger-sm {
+  padding: .4rem .9rem;
+  font-size: .78rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  background: #fff5f5;
+  color: #c62828;
+  border: 2px solid #ef9a9a;
+  cursor: pointer;
+  transition: all .2s;
+  white-space: nowrap;
+  letter-spacing: .02em;
+}
+
+.actions-cell .btn-danger-sm:hover {
+  background: #c62828;
+  color: white;
+  border-color: #c62828;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(198, 40, 40, .2);
+}
