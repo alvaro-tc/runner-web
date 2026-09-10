@@ -3,6 +3,7 @@ import { register } from './api'
 
 export default function Register({ onRegister, onGoToLogin }) {
   const [name, setName] = useState('')
+  const [ci, setCi] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [estado, setEstado] = useState({ cargando: false })
@@ -11,7 +12,7 @@ export default function Register({ onRegister, onGoToLogin }) {
     e.preventDefault()
     setEstado({ cargando: true })
     try {
-      const sesion = await register(name, email, password)
+      const sesion = await register(name, email, password, ci)
       setEstado({ cargando: false })
       if (onRegister) onRegister(sesion)
     } catch (err) {
@@ -20,7 +21,6 @@ export default function Register({ onRegister, onGoToLogin }) {
   }
 
   return (
-    // Se agregó paddingTop y un padding general para evitar que el Header fijo lo tape
     <div className="auth-page" style={{ paddingTop: '80px', paddingBottom: '3rem' }}>
       <div className="auth-deco">
         <div className="auth-circle auth-circle-1" />
@@ -44,6 +44,17 @@ export default function Register({ onRegister, onGoToLogin }) {
               autoComplete="name"
               placeholder="Ej. Lucía Flores"
               onChange={e => setName(e.target.value)}
+            />
+          </label>
+          <label>
+            Carnet de Identidad (CI)
+            <input
+              type="text"
+              required
+              value={ci}
+              autoComplete="off"
+              placeholder="Ej. 1234567 LP"
+              onChange={e => setCi(e.target.value)}
             />
           </label>
           <label>
