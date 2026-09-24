@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import DonationReceiptCanvas from './components/DonationReceiptCanvas'
 import {
   getPendingTransfers,
   confirmTransfer,
@@ -60,6 +61,7 @@ export default function AdminDashboard({ sesion }) {
   const [qrFile, setQrFile] = useState(null)
   const [qrAmount, setQrAmount] = useState('')
   const [qrUploading, setQrUploading] = useState(false)
+  const [receiptData, setReceiptData] = useState(null)
 
   useEffect(() => {
     if (activeTab === 'pagos') fetchTransfers()
@@ -108,8 +110,21 @@ export default function AdminDashboard({ sesion }) {
     if (!window.confirm('¿Confirmar este pago?')) return
     try {
       await confirmTransfer(paymentId, sesion.accessToken)
+      const transfer = transfers.find(t => t.id === paymentId)
       alert('¡Pago confirmado!')
       fetchTransfers()
+      if (transfer) {
+        setReceiptData({
+          receiptNumber: String(transfer.id).slice(-8).toUpperCase(),
+          paymentId: transfer.id,
+          donor: transfer.runner,
+          concept: transfer.marathon,
+          amountCents: transfer.amountCents,
+          currency: 'Bolivianos',
+          currencySymbol: 'Bs',
+          date: new Date(),
+        })
+      }
     } catch (err) { alert('Error: ' + err.message) }
   }
 
@@ -266,7 +281,7 @@ export default function AdminDashboard({ sesion }) {
               <>
                 <div className="table-wrap">
                   <table className="dash-table">
-                    <thead><tr><th>Corredora</th><th>CI</th><th>Celular</th><th>CAM</th><th>Donador</th><th>Maratón</th><th>Estado</th><th>Total</th></tr></thead>
+                    <thead><tr><th>Corredora</th><th>CI</th><th>Celular</th><th>CAM</th><th>Donador</th><th>Maratón</th><th>Estado</th><th>Total</th><th>Recibo</th></tr></thead>
                     <tbody>
                       {registrations.map(r => (
                         <tr key={r.id}>
@@ -278,6 +293,25 @@ export default function AdminDashboard({ sesion }) {
                           <td>{r.marathon}</td>
                           <td><span className={`status-badge ${ESTADO_CLASS[r.status] || ''}`}>{ESTADO_LABEL[r.status] || r.status}</span></td>
                           <td>{(r.totalCents / 100).toFixed(2)} Bs</td>
+                          <td>
+                            {r.status === 'confirmed' && (
+                              <button
+                                className="btn-outline-sm"
+                                onClick={() => setReceiptData({
+                                  receiptNumber: String(r.id).slice(-8).toUpperCase(),
+                                  paymentId: r.id,
+                                  donor: r.runner,
+                                  concept: r.marathon,
+                                  amountCents: r.totalCents,
+                                  currency: 'Bolivianos',
+                                  currencySymbol: 'Bs',
+                                  date: new Date(),
+                                })}
+                              >
+                                Recibo
+                              </button>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -436,6 +470,13 @@ export default function AdminDashboard({ sesion }) {
             </div>
           </div>
         </div>
+      )}
+
+      {receiptData && (
+        <DonationReceiptCanvas
+          data={receiptData}
+          onClose={() => setReceiptData(null)}
+        />
       )}
     </div>
   )
