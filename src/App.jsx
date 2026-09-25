@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Header from './Header'
 import Login from './Login'
 import Register from './Register'
 import AdminDashboard from './AdminDashboard'
 import RunnerDashboard from './RunnerDashboard'
-import { BASE } from './api'
+import { BASE, getMarathons } from './api'
 
 const SERVICIOS = [
   { icon: '💜', title: 'Acompañamiento', text: 'Apoyo emocional y seguimiento personalizado para cada mujer que llega al centro.' },
@@ -15,8 +15,16 @@ const SERVICIOS = [
 
 export default function App() {
   const [sesion, setSesion] = useState(null)
+  const [marathons, setMarathons] = useState([])
+  const [marathonsError, setMarathonsError] = useState(null)
   const [seccion, setSeccion] = useState('inicio')
   const [vista, setVista] = useState('login')
+
+  useEffect(() => {
+    getMarathons()
+      .then(setMarathons)
+      .catch((err) => setMarathonsError(err.message))
+  }, [])
 
   function cerrarSesion() {
     setSesion(null)
@@ -74,6 +82,31 @@ export default function App() {
             </div>
           </section>
 
+          <section className="marathons-section" id="maratones">
+            <div className="section-heading">
+              <span className="eyebrow">Calendario</span>
+              <h2>Próximas maratones</h2>
+            </div>
+            {marathonsError && <p className="error">No se pudieron cargar las maratones: {marathonsError}</p>}
+            {!marathonsError && marathons.length === 0 ? (
+              <div className="card state-card"><div className="state-icon">🏁</div><p>No hay maratones publicadas por el momento.</p></div>
+            ) : (
+              <div className="marathon-list">
+                {marathons.map((item) => (
+                  <article className="marathon-card" key={item.id}>
+                    <div>
+                      <span className="badge-status badge-confirmed">{item.registrationStatus || 'Publicada'}</span>
+                      <h3>{item.name}</h3>
+                      <p>{item.location || item.city || 'Ubicación por confirmar'}</p>
+                      <p>{item.startsAt ? new Date(item.startsAt).toLocaleDateString() : item.date || 'Fecha por confirmar'}</p>
+                    </div>
+                    <button className="btn btn-primary" onClick={() => setSeccion('acceso')}>Inscribirme</button>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+
           <section id="servicios">
             <div className="section-heading">
               <span className="eyebrow">Qué ofrecemos</span>
@@ -93,7 +126,7 @@ export default function App() {
       )
     }
 
-    if (sesion.user.role === 'admin') {
+    if (sesion.user.role === 'admin' || sesion.user.role === 'organizer') {
       return <AdminDashboard sesion={sesion} onLogout={cerrarSesion} />
     }
 

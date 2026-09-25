@@ -1,5 +1,12 @@
 import { useState, useEffect } from 'react'
-import { getPendingTransfers, confirmTransfer, getAdminRegistrations } from './api'
+import {
+  approvePaymentProof,
+  confirmTransfer,
+  getAdminRegistrations,
+  getPaymentProofs,
+  getPendingTransfers,
+  rejectPaymentProof,
+} from './api'
 
 const ESTADO_LABEL = {
   draft: 'Borrador',
@@ -12,6 +19,7 @@ const ESTADO_LABEL = {
 export default function AdminDashboard({ sesion }) {
   const [activeTab, setActiveTab] = useState('organizador')
   const [transfers, setTransfers] = useState([])
+  const [proofs, setProofs] = useState([])
   const [registrations, setRegistrations] = useState([])
   const [statusFilter, setStatusFilter] = useState('')
   const [loading, setLoading] = useState(false)
@@ -20,6 +28,9 @@ export default function AdminDashboard({ sesion }) {
   useEffect(() => {
     if (activeTab === 'organizador') {
       fetchTransfers()
+    }
+    if (activeTab === 'comprobantes') {
+      fetchProofs()
     }
     if (activeTab === 'inscripciones') {
       fetchRegistrations()
@@ -52,6 +63,39 @@ export default function AdminDashboard({ sesion }) {
     }
   }
 
+  async function fetchProofs() {
+    setLoading(true)
+    setError(null)
+    try {
+      setProofs(await getPaymentProofs(sesion.accessToken))
+    } catch (err) {
+      setError('Error cargando comprobantes: ' + err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleApprove(proofId) {
+    if (!window.confirm('¿Confirmar que este pago fue recibido?')) return
+    try {
+      await approvePaymentProof(proofId, '', sesion.accessToken)
+      fetchProofs()
+    } catch (err) {
+      alert('Error aprobando comprobante: ' + err.message)
+    }
+  }
+
+  async function handleReject(proofId) {
+    const note = window.prompt('Indica el motivo del rechazo:')
+    if (!note?.trim()) return
+    try {
+      await rejectPaymentProof(proofId, note, sesion.accessToken)
+      fetchProofs()
+    } catch (err) {
+      alert('Error rechazando comprobante: ' + err.message)
+    }
+  }
+
   async function handleConfirm(paymentId) {
     if (!window.confirm('¿Estás seguro de confirmar este pago?')) return
     try {
@@ -73,6 +117,9 @@ export default function AdminDashboard({ sesion }) {
         <button className={`tab${activeTab === 'organizador' ? ' active' : ''}`} onClick={() => setActiveTab('organizador')}>
           Validar cobros
         </button>
+        <button className={`tab${activeTab === 'comprobantes' ? ' active' : ''}`} onClick={() => setActiveTab('comprobantes')}>
+          Comprobantes QR
+        </button>
         <button className={`tab${activeTab === 'inscripciones' ? ' active' : ''}`} onClick={() => setActiveTab('inscripciones')}>
           Inscripciones
         </button>
@@ -80,6 +127,39 @@ export default function AdminDashboard({ sesion }) {
           Configuraciones
         </button>
       </div>
+
+      {activeTab === 'comprobantes' && (
+        <div className="card">
+          <div className="panel-header">
+            <h3>Comprobantes pendientes de revisión</h3>
+            <button className="btn btn-secondary btn-sm" onClick={fetchProofs}>Actualizar</button>
+          </div>
+          {error && <p className="error">{error}</p>}
+          {loading ? <p>Cargando...</p> : proofs.length === 0 ? (
+            <div className="state-card"><div className="state-icon">✨</div><p>No hay comprobantes pendientes.</p></div>
+          ) : (
+            <div className="proof-grid">
+              {proofs.map((proof) => (
+                <article className="proof-review" key={proof.id}>
+                  <a href={proof.imageUrl} target="_blank" rel="noreferrer">
+                    <img src={proof.imageUrl} alt={`Comprobante de ${proof.runner}`} />
+                  </a>
+                  <div className="proof-review-body">
+                    <h4>{proof.runner}</h4>
+                    <p>{proof.marathon}</p>
+                    <p><strong>Monto:</strong> {(proof.amountCents / 100).toFixed(2)} {proof.currency}</p>
+                    <p><strong>Referencia:</strong> {proof.reference || 'No indicada'}</p>
+                    <div className="proof-actions">
+                      <button className="btn btn-primary btn-sm" onClick={() => handleApprove(proof.id)}>Aprobar</button>
+                      <button className="btn btn-danger btn-sm" onClick={() => handleReject(proof.id)}>Rechazar</button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {activeTab === 'organizador' && (
         <div className="card">

@@ -13,7 +13,10 @@ function deviceId() {
 
 async function fetchApi(path, options = {}) {
   const { token, ...fetchOptions } = options
-  const headers = { 'Content-Type': 'application/json', ...(fetchOptions.headers || {}) }
+  const headers = { ...(fetchOptions.headers || {}) }
+  if (!(fetchOptions.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json'
+  }
   if (token) headers['Authorization'] = `Bearer ${token}`
 
   const res = await fetch(`${BASE}${path}`, { ...fetchOptions, headers })
@@ -41,7 +44,8 @@ export async function getMe(token) {
 }
 
 export async function getMarathons() {
-  return fetchApi('/marathons')
+  const result = await fetchApi('/marathons')
+  return Array.isArray(result) ? result : result.items || []
 }
 
 export async function createRegistration(marathonId, personalData, token) {
@@ -68,14 +72,39 @@ export async function createRegistration(marathonId, personalData, token) {
 }
 
 export async function checkoutRegistration(registrationId, token) {
-  // Paso 3: Pagar (usamos bank_transfer para probar la validación manual)
+  // Paso 3: Abrir el cobro QR manual. La confirmación llegará después de que
+  // un organizador revise el comprobante subido por el corredor.
   // El backend exige Idempotency-Key en los cobros para no duplicarlos si el pedido se reintenta.
+  const storageKey = `payment.idempotency.${registrationId}`
+  const idempotencyKey = sessionStorage.getItem(storageKey) || crypto.randomUUID()
+  sessionStorage.setItem(storageKey, idempotencyKey)
+
   return fetchApi(`/registrations/${registrationId}/checkout`, {
     method: 'POST',
-    headers: { 'Idempotency-Key': crypto.randomUUID() },
-    body: JSON.stringify({ termsAccepted: true, method: 'bank_transfer' }),
+    headers: { 'Idempotency-Key': idempotencyKey },
+    body: JSON.stringify({ termsAccepted: true, method: 'qr_manual' }),
     token
   })
+}
+
+export async function getPayment(paymentId, token) {
+  return fetchApi(`/payments/${paymentId}`, { token })
+}
+
+export async function uploadPaymentProof(paymentId, file, reference, token) {
+  const body = new FormData()
+  body.append('file', file)
+  if (reference?.trim()) body.append('reference', reference.trim())
+
+  return fetchApi(`/payments/${paymentId}/proof`, {
+    method: 'POST',
+    body,
+    token,
+  })
+}
+
+export async function getPaymentReceipt(paymentId, token) {
+  return fetchApi(`/payments/${paymentId}/receipt`, { token })
 }
 
 export async function getPendingTransfers(token) {
@@ -91,6 +120,26 @@ export async function confirmTransfer(paymentId, token) {
   return fetchApi(`/admin/payments/${paymentId}/confirm-transfer`, {
     method: 'POST',
     token
+  })
+}
+
+export async function getPaymentProofs(token) {
+  return fetchApi('/admin/payment-proofs', { token })
+}
+
+export async function approvePaymentProof(proofId, note, token) {
+  return fetchApi(`/admin/payment-proofs/${proofId}/approve`, {
+    method: 'POST',
+    body: JSON.stringify(note?.trim() ? { note: note.trim() } : {}),
+    token,
+  })
+}
+
+export async function rejectPaymentProof(proofId, note, token) {
+  return fetchApi(`/admin/payment-proofs/${proofId}/reject`, {
+    method: 'POST',
+    body: JSON.stringify({ note: note.trim() }),
+    token,
   })
 }
 

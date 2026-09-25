@@ -8,7 +8,9 @@ export default function Header({ sesion, onLogout, seccion, onSeccionChange }) {
 
       {sesion ? (
         <div className="user">
-          <span className="role-badge">{sesion.user.role === 'admin' ? 'Admin' : 'Corredor/a'}</span>
+          <span className="role-badge">
+            {sesion.user.role === 'admin' ? 'Admin' : sesion.user.role === 'organizer' ? 'Organizador' : 'Corredor/a'}
+          </span>
           <span>{sesion.user.name}</span>
           <button className="btn-logout" onClick={onLogout}>Salir</button>
         </div>

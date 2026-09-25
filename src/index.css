@@ -478,6 +478,53 @@ table.data .cell-sub { font-size: 12px; color: var(--text-secondary); margin-top
 .badge-confirmed { background: var(--success-bg); color: var(--success); }
 .badge-cancelled { background: var(--danger-bg); color: var(--danger); }
 .badge-refunded { background: var(--info-bg); color: var(--info); }
+.badge-in_review { background: var(--warning-bg); color: var(--warning); }
+.badge-rejected { background: var(--danger-bg); color: var(--danger); }
+.badge-approved { background: var(--success-bg); color: var(--success); }
+
+/* ─── Catálogo y comprobantes QR ───────────────────────────────────── */
+
+.marathons-section { margin-top: 64px; }
+.marathon-list { display: grid; gap: 14px; }
+.marathon-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 22px 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+.marathon-card h3 { margin: 10px 0 6px; color: var(--ink); }
+.marathon-card p { margin: 4px 0; color: var(--text-secondary); font-size: 14px; }
+.payment-card { display: grid; gap: 24px; }
+.payment-summary { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.payment-summary h3 { margin: 6px 0; color: var(--ink); }
+.eyebrow { margin: 0; color: var(--primary); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+.qr-instructions { display: flex; align-items: center; gap: 24px; padding: 20px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-muted); }
+.qr-instructions h3 { margin: 0 0 8px; color: var(--ink); }
+.qr-instructions p { margin: 8px 0; color: var(--text-secondary); line-height: 1.5; }
+.payment-qr { width: 180px; height: 180px; object-fit: contain; background: white; border-radius: var(--radius-sm); }
+.proof-form { display: grid; gap: 16px; }
+.notice { padding: 14px 16px; border-radius: var(--radius-sm); line-height: 1.5; }
+.notice p { margin: 6px 0 0; }
+.notice-warning { color: var(--warning); background: var(--warning-bg); }
+.notice-danger { color: var(--danger); background: var(--danger-bg); }
+.confirmed-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; }
+.confirmed-actions p { flex-basis: 100%; margin: 0; color: var(--success); }
+.receipt-link { color: var(--primary); font-weight: 600; }
+.proof-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 18px; }
+.proof-review { overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+.proof-review > a { display: block; background: var(--surface-muted); }
+.proof-review img { display: block; width: 100%; height: 220px; object-fit: contain; }
+.proof-review-body { padding: 16px; }
+.proof-review-body h4 { margin: 0 0 6px; color: var(--ink); }
+.proof-review-body p { margin: 5px 0; color: var(--text-secondary); font-size: 14px; }
+.proof-actions { display: flex; gap: 8px; margin-top: 14px; }
+.btn-danger { background: var(--danger); color: white; }
+.btn-danger:hover { background: #991b1b; }
 
 /* ─── Responsive ────────────────────────────────────────────────────── */
 
@@ -488,4 +535,7 @@ table.data .cell-sub { font-size: 12px; color: var(--text-secondary); margin-top
   .hero-route { display: none; }
   .hero-card { position: static; margin: 0; max-width: none; border-radius: 0 0 24px 24px; box-shadow: none; }
   .hero-stat { position: static; margin: 16px; box-shadow: var(--shadow-card); }
+  .marathon-card, .payment-summary, .qr-instructions { align-items: stretch; flex-direction: column; }
+  .payment-qr { align-self: center; }
+  .marathon-card .btn { width: 100%; }
 }
