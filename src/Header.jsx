@@ -51,43 +51,13 @@ export default function Header({ sesion, onLogout, onSeccionChange }) {
           </div>
         </a>
 
-        {!sesion && (
-          <nav className={`topbar-nav${menuOpen ? ' nav-open' : ''}`}>
-            {/* La casita ahora es parte del menú, alineada y con el mismo estilo */}
-            <a 
-              href="#top" 
-              onClick={(e) => handleNavClick(e, 'top')}
-              title="Volver al inicio"
-              style={{ display: 'flex', alignItems: 'center', padding: '0.45rem 0.5rem' }}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                <polyline points="9 22 9 12 15 12 15 22"></polyline>
-              </svg>
-            </a>
-            <a href="#nosotras" onClick={(e) => handleNavClick(e, 'nosotras')}>Nuestra Labor</a>
-            <a href="#carreras" onClick={(e) => handleNavClick(e, 'carreras')}>Modalidades</a>
-            <a href="#recursos" onClick={(e) => handleNavClick(e, 'recursos')}>Recursos</a>
-            <a href="#contacto" onClick={(e) => handleNavClick(e, 'contacto')}>Contacto</a>
-          </nav>
-        )}
-
-        <div className="topbar-actions">
-          {sesion ? (
-            <>
-              <span className={`role-badge ${esStaff(sesion.user.role) ? 'badge-admin' : 'badge-runner'}`}>
-                {etiquetaRol(sesion.user.role)}
-              </span>
-              <span className="user-name" style={{ color: 'var(--dark)' }}>{sesion.user.name}</span>
-              <button className="btn-ghost-sm" onClick={onLogout} style={{ color: 'var(--dark)', borderColor: 'var(--gray)' }}>Salir</button>
-            </>
-          ) : (
-            <>
-              {/* Botones vuelven a usar los estilos base para que contrasten bien */}
-              <button className="btn-outline-sm" onClick={irAcceso}>Iniciar sesión</button>
-              <button className="btn-primary-sm" onClick={irRegistro}>Registrarse</button>
-            </>
-          )}
+      {sesion ? (
+        <div className="user">
+          <span className="role-badge">
+            {sesion.user.role === 'admin' ? 'Admin' : sesion.user.role === 'organizer' ? 'Organizador' : 'Corredor/a'}
+          </span>
+          <span>{sesion.user.name}</span>
+          <button className="btn-logout" onClick={onLogout}>Salir</button>
         </div>
 
         {!sesion && (
