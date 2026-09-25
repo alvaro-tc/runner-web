@@ -1,10 +1,21 @@
 import { useState, useEffect } from 'react'
+import DonationReceiptCanvas from './components/DonationReceiptCanvas'
 import {
-  approvePaymentProof,
+  getPendingTransfers,
   confirmTransfer,
   getAdminRegistrations,
+  getAdminMarathons,
+  getAdminUsers,
+  uploadMarathonQR,
+  createMarathon,
+  updateMarathon,
+  deleteMarathon,
+  publishMarathon,
+  unpublishMarathon,
+  deleteUser,
+  updateUser,
   getPaymentProofs,
-  getPendingTransfers,
+  approvePaymentProof,
   rejectPaymentProof,
 } from './api'
 
@@ -57,17 +68,12 @@ export default function AdminDashboard({ sesion }) {
   const [receiptData, setReceiptData] = useState(null)
 
   useEffect(() => {
-    if (activeTab === 'organizador') {
-      fetchTransfers()
-    }
-    if (activeTab === 'comprobantes') {
-      fetchProofs()
-    }
-    if (activeTab === 'inscripciones') {
-      fetchRegistrations()
-    }
-  }, [activeTab, statusFilter])
-
+    if (activeTab === 'pagos') fetchTransfers()
+    if (activeTab === 'comprobantes') fetchProofs()
+    if (activeTab === 'inscripciones') fetchRegistrations()
+    if (activeTab === 'maratones') fetchMarathons()
+    if (activeTab === 'usuarios') fetchUsers()
+  }, [activeTab, statusFilter, page])
 
   async function fetchTransfers() {
     setLoading(true); setError(null)
@@ -106,36 +112,23 @@ export default function AdminDashboard({ sesion }) {
   }
 
   async function fetchProofs() {
-    setLoading(true)
-    setError(null)
-    try {
-      setProofs(await getPaymentProofs(sesion.accessToken))
-    } catch (err) {
-      setError('Error cargando comprobantes: ' + err.message)
-    } finally {
-      setLoading(false)
-    }
+    setLoading(true); setError(null)
+    try { setProofs(await getPaymentProofs(sesion.accessToken)) }
+    catch (err) { setError('Error cargando comprobantes: ' + err.message) }
+    finally { setLoading(false) }
   }
 
   async function handleApprove(proofId) {
     if (!window.confirm('¿Confirmar que este pago fue recibido?')) return
-    try {
-      await approvePaymentProof(proofId, '', sesion.accessToken)
-      fetchProofs()
-    } catch (err) {
-      alert('Error aprobando comprobante: ' + err.message)
-    }
+    try { await approvePaymentProof(proofId, '', sesion.accessToken); fetchProofs() }
+    catch (err) { alert('Error aprobando comprobante: ' + err.message) }
   }
 
   async function handleReject(proofId) {
     const note = window.prompt('Indica el motivo del rechazo:')
     if (!note?.trim()) return
-    try {
-      await rejectPaymentProof(proofId, note, sesion.accessToken)
-      fetchProofs()
-    } catch (err) {
-      alert('Error rechazando comprobante: ' + err.message)
-    }
+    try { await rejectPaymentProof(proofId, note, sesion.accessToken); fetchProofs() }
+    catch (err) { alert('Error rechazando comprobante: ' + err.message) }
   }
 
   async function handleConfirm(paymentId) {
@@ -276,58 +269,179 @@ export default function AdminDashboard({ sesion }) {
         </div>
       </div>
 
-      <div className="tabs">
-        <button className={`tab${activeTab === 'organizador' ? ' active' : ''}`} onClick={() => setActiveTab('organizador')}>
-          Validar cobros
-        </button>
-        <button className={`tab${activeTab === 'comprobantes' ? ' active' : ''}`} onClick={() => setActiveTab('comprobantes')}>
-          Comprobantes QR
-        </button>
-        <button className={`tab${activeTab === 'inscripciones' ? ' active' : ''}`} onClick={() => setActiveTab('inscripciones')}>
-          Inscripciones
-        </button>
-        <button className={`tab${activeTab === 'admin' ? ' active' : ''}`} onClick={() => setActiveTab('admin')}>
-          Configuraciones
-        </button>
-      </div>
-
-      {activeTab === 'comprobantes' && (
-        <div className="card">
-          <div className="panel-header">
-            <h3>Comprobantes pendientes de revisión</h3>
-            <button className="btn btn-secondary btn-sm" onClick={fetchProofs}>Actualizar</button>
-          </div>
-          {error && <p className="error">{error}</p>}
-          {loading ? <p>Cargando...</p> : proofs.length === 0 ? (
-            <div className="state-card"><div className="state-icon">✨</div><p>No hay comprobantes pendientes.</p></div>
-          ) : (
-            <div className="proof-grid">
-              {proofs.map((proof) => (
-                <article className="proof-review" key={proof.id}>
-                  <a href={proof.imageUrl} target="_blank" rel="noreferrer">
-                    <img src={proof.imageUrl} alt={`Comprobante de ${proof.runner}`} />
-                  </a>
-                  <div className="proof-review-body">
-                    <h4>{proof.runner}</h4>
-                    <p>{proof.marathon}</p>
-                    <p><strong>Monto:</strong> {(proof.amountCents / 100).toFixed(2)} {proof.currency}</p>
-                    <p><strong>Referencia:</strong> {proof.reference || 'No indicada'}</p>
-                    <div className="proof-actions">
-                      <button className="btn btn-primary btn-sm" onClick={() => handleApprove(proof.id)}>Aprobar</button>
-                      <button className="btn btn-danger btn-sm" onClick={() => handleReject(proof.id)}>Rechazar</button>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
+      <div className="dashboard-body container">
+        <div className="dash-tabs">
+          {[
+            ['inscripciones', 'Inscripciones'],
+            ['pagos', 'Validar cobros'],
+            ['comprobantes', 'Comprobantes QR'],
+            ['maratones', 'Maratones'],
+            ['usuarios', 'Usuarios'],
+          ].map(([key, label]) => (
+            <button key={key} className={`dash-tab${activeTab === key ? ' active' : ''}`} onClick={() => setActiveTab(key)}>
+              {label}
+            </button>
+          ))}
         </div>
-      )}
 
-      {activeTab === 'organizador' && (
-        <div className="card">
-          <div className="panel-header">
-            <h3>Transferencias pendientes</h3>
+        {error && <p className="dash-error">{error}</p>}
+        {loading && <div className="dash-loading"><span>Cargando…</span></div>}
+
+        {/* INSCRIPCIONES */}
+        {activeTab === 'inscripciones' && !loading && (
+          <div className="dash-card">
+            <div className="dash-card-header">
+              <h2>Inscripciones ({totalItems})</h2>
+              <div className="dash-search-bar">
+                <input type="text" placeholder="Buscar..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSearch()} className="dash-search-input" />
+                <button className="btn-outline-sm" onClick={handleSearch}>Buscar</button>
+                <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}>
+                  <option value="">Todos</option>
+                  {Object.entries(ESTADO_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </div>
+            </div>
+            {registrations.length === 0 ? (
+              <div className="dash-empty"><span></span><p>No hay inscripciones.</p></div>
+            ) : (
+              <>
+                <div className="table-wrap">
+                  <table className="dash-table">
+                    <thead><tr><th>Corredora</th><th>CI</th><th>Celular</th><th>CAM</th><th>Donador</th><th>Maratón</th><th>Estado</th><th>Total</th><th>Recibo</th></tr></thead>
+                    <tbody>
+                      {registrations.map(r => (
+                        <tr key={r.id}>
+                          <td><div className="cell-name">{r.runner}</div><div className="cell-sub">{r.email}</div></td>
+                          <td>{r.docId || '—'}</td>
+                          <td>{r.phone || '—'}</td>
+                          <td>{r.knowsCam === null ? '—' : r.knowsCam ? 'Sí' : 'No'}</td>
+                          <td>{r.acceptsDonorCall === null ? '—' : r.acceptsDonorCall ? 'Sí' : 'No'}</td>
+                          <td>{r.marathon}</td>
+                          <td><span className={`status-badge ${ESTADO_CLASS[r.status] || ''}`}>{ESTADO_LABEL[r.status] || r.status}</span></td>
+                          <td>{(r.totalCents / 100).toFixed(2)} Bs</td>
+                          <td>
+                            {r.status === 'confirmed' && (
+                              <button
+                                className="btn-outline-sm"
+                                onClick={() => setReceiptData({
+                                  receiptNumber: String(r.id).slice(-8).toUpperCase(),
+                                  paymentId: r.id,
+                                  donor: r.runner,
+                                  concept: r.marathon,
+                                  amountCents: r.totalCents,
+                                  currency: 'Bolivianos',
+                                  currencySymbol: 'Bs',
+                                  date: new Date(),
+                                })}
+                              >
+                                Recibo
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="pagination">
+                  <button className="btn-outline-sm" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>←</button>
+                  <span>Página {page} de {totalPages}</span>
+                  <button className="btn-outline-sm" disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>→</button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* PAGOS */}
+        {activeTab === 'pagos' && !loading && (
+          <div className="dash-card">
+            <div className="dash-card-header"><h2>Transferencias pendientes</h2><button className="btn-outline-sm" onClick={fetchTransfers}>Actualizar</button></div>
+            {transfers.length === 0 ? <div className="dash-empty"><span></span><p>No hay pendientes.</p></div> : (
+              <div className="table-wrap">
+                <table className="dash-table">
+                  <thead><tr><th>Corredora</th><th>CI</th><th>Celular</th><th>Maratón</th><th>Monto</th><th>Acción</th></tr></thead>
+                  <tbody>
+                    {transfers.map(t => (
+                      <tr key={t.id}>
+                        <td><div className="cell-name">{t.runner}</div><div className="cell-sub">{t.email}</div></td>
+                        <td>{t.docId || '—'}</td>
+                        <td>{t.phone || '—'}</td>
+                        <td>{t.marathon}</td>
+                        <td><strong>{(t.amountCents / 100).toFixed(2)} Bs</strong></td>
+                        <td><button className="btn-primary-sm" onClick={() => handleConfirm(t.id)}>Confirmar</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* COMPROBANTES */}
+        {activeTab === 'comprobantes' && !loading && (
+          <div className="dash-card">
+            <div className="dash-card-header"><h2>Comprobantes pendientes de revisión</h2><button className="btn-outline-sm" onClick={fetchProofs}>Actualizar</button></div>
+            {proofs.length === 0 ? <div className="dash-empty"><span></span><p>No hay comprobantes pendientes.</p></div> : (
+              <div className="proof-grid">
+                {proofs.map(proof => (
+                  <article className="proof-review" key={proof.id}>
+                    <a href={proof.imageUrl} target="_blank" rel="noreferrer">
+                      <img src={proof.imageUrl} alt={`Comprobante de ${proof.runner}`} />
+                    </a>
+                    <div className="proof-review-body">
+                      <h4>{proof.runner}</h4>
+                      <p>{proof.marathon}</p>
+                      <p><strong>Monto:</strong> {(proof.amountCents / 100).toFixed(2)} {proof.currency}</p>
+                      <p><strong>Referencia:</strong> {proof.reference || 'No indicada'}</p>
+                      <div className="proof-actions">
+                        <button className="btn-primary-sm" onClick={() => handleApprove(proof.id)}>Aprobar</button>
+                        <button className="btn-danger-sm" onClick={() => handleReject(proof.id)}>Rechazar</button>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* MARATONES */}
+        {activeTab === 'maratones' && !loading && (
+          <div className="dash-card">
+            <div className="dash-card-header">
+              <h2>Maratones ({marathonsFiltradas.length})</h2>
+              <div className="dash-search-bar">
+                <input type="text" placeholder="Buscar..." value={marathonSearch} onChange={e => setMarathonSearch(e.target.value)} className="dash-search-input" />
+                <button className="btn-primary-sm" onClick={openNewMarathonModal}>+ Nueva</button>
+              </div>
+            </div>
+            {marathonsFiltradas.length === 0 ? <div className="dash-empty"><span></span><p>No hay maratones.</p></div> : (
+              <div className="table-wrap">
+                <table className="dash-table">
+                  <thead><tr><th>Nombre</th><th>Ciudad</th><th>Fecha</th><th>Precio</th><th>Inscritos</th><th>Estado</th><th>Acciones</th></tr></thead>
+                  <tbody>
+                    {marathonsFiltradas.map(m => (
+                      <tr key={m.id}>
+                        <td><div className="cell-name">{m.name}</div><div className="cell-sub">{m.slug}</div></td>
+                        <td>{m.city}</td>
+                        <td>{new Date(m.startsAt).toLocaleDateString()}</td>
+                        <td>{(m.priceCents / 100).toFixed(2)} Bs</td>
+                        <td>{m.slotsTaken}/{m.capacity}</td>
+                        <td><span className={`status-badge ${m.published ? 'badge-confirmed' : 'badge-draft'}`}>{m.published ? 'Publicada' : 'Borrador'}</span></td>
+                        <td className="actions-cell">
+                          <button className="btn-outline-sm" onClick={() => openEditMarathonModal(m)}>Editar</button>
+                          <button className="btn-outline-sm" onClick={() => openQrModal(m)}>QR</button>
+                          <button className="btn-outline-sm" onClick={() => handleTogglePublish(m)}>{m.published ? 'Ocultar' : 'Publicar'}</button>
+                          <button className="btn-danger-sm" onClick={() => handleDeleteMarathon(m)}>Eliminar</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
