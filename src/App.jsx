@@ -13,10 +13,27 @@ import Resources from './components/Resources'
 import Contact from './components/Contact'
 import Footer from './components/Footer'
 
+function leerSesionGuardada() {
+  try {
+    const raw = localStorage.getItem('auth.sesion')
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
 export default function App() {
-  const [sesion, setSesion] = useState(null)
+  const [sesion, setSesionState] = useState(leerSesionGuardada)
   const [seccion, setSeccion] = useState('inicio')
   const [vista, setVista] = useState('login')
+
+  function setSesion(nuevaSesion) {
+    setSesionState(nuevaSesion)
+    try {
+      if (nuevaSesion) localStorage.setItem('auth.sesion', JSON.stringify(nuevaSesion))
+      else localStorage.removeItem('auth.sesion')
+    } catch {}
+  }
 
   function cerrarSesion() {
     setSesion(null)

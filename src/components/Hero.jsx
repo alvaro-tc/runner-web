@@ -1,3 +1,5 @@
+import { APK_URL } from '../api'
+
 export default function Hero({ onAcceso }) {
   return (
     <section className="hero">
@@ -23,17 +25,11 @@ export default function Hero({ onAcceso }) {
             Conocer más
           </a>
         </div>
-        <div className="hero-stats">
-          <div className="hero-stat-item">
-            <strong>2</strong><span>Distancias</span>
-          </div>
-          <div className="hero-stat-divider" />
-          <div className="hero-stat-item">
-            <strong>5K &amp; 10K</strong><span>Categorías</span>
-          </div>
-          <div className="hero-stat-divider" />
-          <div className="hero-stat-item">
-            <strong>100%</strong><span>Beneficencia</span>
+        <div className="hero-app">
+          <img src="/app-qr.svg" alt="QR para descargar la app de Android" width="120" height="120" />
+          <div>
+            <p>Escanea el QR o descarga la app para Android</p>
+            <a className="btn-primary" href={APK_URL}>Descargar aquí (.apk)</a>
           </div>
         </div>
       </div>

@@ -12,7 +12,7 @@ function deviceId() {
 }
 
 async function fetchApi(path, options = {}) {
-  const { token, ...fetchOptions } = options
+  const { token, withMeta, ...fetchOptions } = options
   const headers = { ...(fetchOptions.headers || {}) }
   if (!(fetchOptions.body instanceof FormData)) {
     headers['Content-Type'] = 'application/json'
@@ -23,7 +23,7 @@ async function fetchApi(path, options = {}) {
   if (res.status === 204) return null
   const json = await res.json()
   if (!res.ok) throw new Error(json?.error?.message || `Error ${res.status}`)
-  return json.data
+  return withMeta ? json : json.data
 }
 
 // AUTH
@@ -45,28 +45,49 @@ export async function getMe(token) {
   return fetchApi('/users/me', { token })
 }
 
+export async function updateMe(data, token) {
+  return fetchApi('/users/me', { method: 'PATCH', body: JSON.stringify(data), token })
+}
+
 // MARATONES PÚBLICAS
 export async function getMarathons() {
   const result = await fetchApi('/marathons')
   return Array.isArray(result) ? result : result.items || []
 }
 
+// Detalle: trae description e includes, que el listado no manda
+export async function getMarathon(slug) {
+  return fetchApi(`/marathons/${slug}`)
+}
+
+export async function getMarathonCategories(marathonId) {
+  return fetchApi(`/marathons/${marathonId}/categories`)
+}
+
 // INSCRIPCIONES
-export async function createRegistration(marathonId, personalData, token) {
+export async function createRegistration(marathonId, personalData, token, categoryId) {
   const reg = await fetchApi('/registrations', {
     method: 'POST',
     body: JSON.stringify({ marathonId, personalData }),
     token
   })
-  const categorias = await fetchApi(`/marathons/${marathonId}/categories`)
-  if (categorias.length > 0) {
+  if (categoryId) {
     await fetchApi(`/registrations/${reg.id}/category-extras`, {
       method: 'PATCH',
-      body: JSON.stringify({ categoryId: categorias[0].id }),
+      body: JSON.stringify({ categoryId }),
       token,
     })
   }
   return reg
+}
+
+export async function getMyRegistrations(token) {
+  const result = await fetchApi('/registrations', { token })
+  return Array.isArray(result) ? result : result.items || []
+}
+
+export async function getRegistrationPayments(registrationId, token) {
+  return fetchApi(`/registrations/${registrationId}/payments`, { token })
 }
 
 export async function checkoutRegistration(registrationId, token) {
@@ -101,12 +122,14 @@ export async function uploadPaymentProof(paymentId, file, reference, token) {
   })
 }
 
-export async function getPaymentReceipt(paymentId, token) {
-  return fetchApi(`/payments/${paymentId}/receipt`, { token })
-}
 
-export async function getPendingTransfers(token) {
-  return fetchApi('/admin/payments/pending-transfers', { token })
+// Cobros con su comprobante: GET /admin/payments devuelve { data, meta: { total, page, pageSize } }
+export async function getAdminPayments(token, { q = '', status = '', marathonId = '', page = 1, pageSize = 20 } = {}) {
+  const params = new URLSearchParams({ page, pageSize })
+  if (q) params.append('q', q)
+  if (status) params.append('status', status)
+  if (marathonId) params.append('marathonId', marathonId)
+  return fetchApi(`/admin/payments?${params}`, { token, withMeta: true })
 }
 
 export async function confirmTransfer(paymentId, token) {
@@ -169,6 +192,19 @@ export async function uploadMarathonQR(token, marathonId, file) {
   })
 }
 
+// APK de Android. La URL pública redirige siempre a la última versión subida.
+export const APK_URL = `${BASE}/config/app/apk`
+
+export async function getApkInfo(token) {
+  return fetchApi('/config/app/apk/info', { token })
+}
+
+export async function uploadApk(token, file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return fetchApi('/config/app/apk', { method: 'POST', body: formData, token })
+}
+
 export async function publishMarathon(token, marathonId) {
   return fetchApi(`/admin/marathons/${marathonId}/publish`, {
     method: 'POST',
@@ -227,10 +263,6 @@ export async function requestAccountDeletion(email, reason) {
     message = json?.error?.message || message
   } catch {}
   throw new Error(message)
-}
-
-export async function getPaymentProofs(token) {
-  return fetchApi('/admin/payment-proofs', { token })
 }
 
 export async function approvePaymentProof(proofId, note, token) {
