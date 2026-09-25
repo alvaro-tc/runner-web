@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://cam-run.tumype.com/sitemap.xml

@@ -32,17 +32,36 @@ export default function App() {
     setVista('login')
   }
 
+  function irAcceso() {
+    setSeccion('auth')
+    setVista('login')
+  }
+
+  // Intercepta las órdenes del Header para enrutar correctamente
+  function manejarNavegacion(nuevaSeccion) {
+    if (nuevaSeccion === 'acceso') {
+      setSeccion('auth')
+      setVista('login')
+    } else if (nuevaSeccion === 'registro') {
+      setSeccion('auth')
+      setVista('register')
+    } else {
+      setSeccion(nuevaSeccion)
+    }
+  }
+
   function renderContent() {
     if (!sesion) {
-      if (seccion === 'acceso') {
+      // Ahora escucha la sección unificada 'auth'
+      if (seccion === 'auth' || seccion === 'acceso') {
         return (
-          <section className="auth-wrap">
+          <main>
             {vista === 'login' ? (
               <Login onLogin={setSesion} onGoToRegister={() => setVista('register')} />
             ) : (
               <Register onRegister={setSesion} onGoToLogin={() => setVista('login')} />
             )}
-          </section>
+          </main>
         )
       }
 
@@ -135,10 +154,13 @@ export default function App() {
 
   return (
     <div className="page">
-      <Header sesion={sesion} onLogout={cerrarSesion} seccion={seccion} onSeccionChange={setSeccion} />
+      <Header
+        sesion={sesion}
+        onLogout={cerrarSesion}
+        seccion={seccion}
+        onSeccionChange={manejarNavegacion}
+      />
       {renderContent()}
-
-      <footer>API: {BASE}</footer>
     </div>
   )
 }
