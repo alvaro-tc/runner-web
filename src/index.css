@@ -445,6 +445,42 @@ textarea.form-input {
   margin-top: .5rem;
 }
 
+.podium-form {
+  display: grid;
+  gap: 1rem;
+  padding: 1.5rem;
+}
+
+.podium-form > p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.podium-row {
+  display: grid;
+  grid-template-columns: minmax(92px, .55fr) repeat(3, minmax(150px, 1fr));
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.podium-row .form-label {
+  margin-bottom: 0;
+}
+
+.podium-message {
+  font-weight: 600;
+}
+
+@media (max-width: 720px) {
+  .podium-row {
+    grid-template-columns: 1fr;
+    gap: .5rem;
+  }
+}
+
 /* ═══ SELECTOR DE MARATÓN ═══ */
 .marathon-selector {
   padding: 0 2rem 1.5rem;
