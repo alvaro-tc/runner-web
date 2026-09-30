@@ -2,13 +2,12 @@ import { useEffect, useState } from 'react'
 import { getMarathons, getMarathon } from '../api'
 
 const fecha = iso => new Date(iso).toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' })
-const distancia = m => (m % 1000 === 0 ? `${m / 1000}K` : `${(m / 1000).toFixed(1)}K`)
 
 export default function Races({ onAcceso }) {
   const [carreras, setCarreras] = useState(null)
 
   useEffect(() => {
-    // ponytail: un detalle por maraton (N+1) porque el listado no trae description; sumarla a CAMPOS_RESUMEN en la API si crecen
+    // ponytail: un detalle por carrera (N+1) porque el listado no trae description; sumarla a CAMPOS_RESUMEN en la API si crecen
     getMarathons()
       .then(ms => Promise.all(ms.map(m => getMarathon(m.slug).catch(() => m))))
       .then(setCarreras)
@@ -33,11 +32,10 @@ export default function Races({ onAcceso }) {
                 className="race-card-top"
                 style={c.coverUrl ? { background: `linear-gradient(rgba(0,0,0,.35),rgba(0,0,0,.55)), url(${c.coverUrl}) center/cover` } : undefined}
               >
-                <div className="race-dist">{distancia(c.distanceMeters)}</div>
+                <h3 className="race-name">{c.name}</h3>
                 <span className="nivel-badge">{c.city}</span>
               </div>
               <div className="race-card-body">
-                <h3>{c.name}</h3>
                 {c.description && <p>{c.description}</p>}
                 {Array.isArray(c.includes) && c.includes.length > 0 && (
                   <ul className="race-includes">

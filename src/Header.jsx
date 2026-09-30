@@ -47,7 +47,7 @@ export default function Header({ sesion, onLogout, onSeccionChange }) {
           <img className="brand-icon" src="/logo.png" alt="CAM" />
           <div className="brand-text">
             <strong style={{ color: 'var(--purple)' }}>CAM</strong>
-            <span style={{ color: 'var(--dark)' }}>Maratón de la Mujer</span>
+            <span style={{ color: 'var(--dark)' }}>Carrera de la Mujer</span>
           </div>
         </a>
 

@@ -49,7 +49,7 @@ export async function updateMe(data, token) {
   return fetchApi('/users/me', { method: 'PATCH', body: JSON.stringify(data), token })
 }
 
-// MARATONES PÚBLICAS
+// CARRERAS PÚBLICAS
 export async function getMarathons() {
   const result = await fetchApi('/marathons')
   return Array.isArray(result) ? result : result.items || []
@@ -150,7 +150,7 @@ export async function getAdminRegistrations(token, { status = '', search = '', p
   return fetchApi(`/admin/registrations?${params}`, { token })
 }
 
-// ADMIN: MARATONES
+// ADMIN: CARRERAS
 export async function getAdminMarathons(token) {
   return fetchApi('/admin/marathons', { token })
 }

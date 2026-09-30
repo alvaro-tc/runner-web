@@ -3,7 +3,7 @@ const TESTIMONIOS = [
     nombre: 'María González',
     inicial: 'M',
     color: '#E91E63',
-    texto: 'Correr la maratón fue un reto personal enorme. Nunca imaginé completar los 10K, pero el ambiente, la seguridad y la organización me impulsaron a lograrlo.',
+    texto: 'Correr la carrera fue un reto personal enorme. Nunca imaginé completar los 10K, pero el ambiente, la seguridad y la organización me impulsaron a lograrlo.',
   },
   {
     nombre: 'Ana Rodríguez',

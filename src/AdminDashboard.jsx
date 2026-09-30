@@ -115,7 +115,7 @@ export default function AdminDashboard({ sesion }) {
     if (activeTab === 'pagos') fetchPayments()
   }, [activeTab, payPage, payStatus, payMarathon])
 
-  // El filtro por maratón necesita la lista; el organizador también puede leerla.
+  // El filtro por carrera necesita la lista; el organizador también puede leerla.
   useEffect(() => {
     if (activeTab === 'pagos' && marathons.length === 0) {
       getAdminMarathons(sesion.accessToken).then(setMarathons).catch(() => {})
@@ -251,10 +251,10 @@ export default function AdminDashboard({ sesion }) {
       }
       if (editingMarathon) {
         await updateMarathon(sesion.accessToken, editingMarathon.id, data)
-        alert('Maratón actualizada')
+        alert('Carrera actualizada')
       } else {
         await createMarathon(sesion.accessToken, data)
-        alert('Maratón creada')
+        alert('Carrera creada')
       }
       setShowMarathonModal(false)
       fetchMarathons()
@@ -320,7 +320,7 @@ export default function AdminDashboard({ sesion }) {
       <div className="dashboard-header">
         <div className="container">
           <h1>{esAdmin ? 'Panel Administrativo' : 'Panel de Organizador'}</h1>
-          <p>Centro de Apoyo a la Mujer · Maratón de la Mujer</p>
+          <p>Centro de Apoyo a la Mujer · Carrera de la Mujer</p>
         </div>
       </div>
 
@@ -329,7 +329,7 @@ export default function AdminDashboard({ sesion }) {
           {[
             ['inscripciones', 'Inscripciones'],
             ['pagos', 'Validar cobros'],
-            esAdmin && ['maratones', 'Maratones'],
+            esAdmin && ['maratones', 'Carreras'],
             ['usuarios', 'Usuarios'],
             esAdmin && ['app', 'App Android'],
           ].filter(Boolean).map(([key, label]) => (
@@ -358,7 +358,7 @@ export default function AdminDashboard({ sesion }) {
               <>
                 <div className="table-wrap">
                   <table className="dash-table">
-                    <thead><tr><th>Corredora</th><th>CI</th><th>Celular</th><th>CAM</th><th>Donador</th><th>Maratón</th><th>Dorsal</th><th>Total</th><th>Recibo</th></tr></thead>
+                    <thead><tr><th>Corredora</th><th>CI</th><th>Celular</th><th>CAM</th><th>Donador</th><th>Carrera</th><th>Dorsal</th><th>Total</th><th>Recibo</th></tr></thead>
                     <tbody>
                       {registrations.map(r => (
                         <tr key={r.id}>
@@ -414,8 +414,8 @@ export default function AdminDashboard({ sesion }) {
                   <option value="">Todos los estados</option>
                   {Object.entries(PAGO_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select>
-                <select value={payMarathon} onChange={e => { setPayMarathon(e.target.value); setPayPage(1) }} aria-label="Maratón">
-                  <option value="">Todas las maratones</option>
+                <select value={payMarathon} onChange={e => { setPayMarathon(e.target.value); setPayPage(1) }} aria-label="Carrera">
+                  <option value="">Todas las carreras</option>
                   {marathons.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                 </select>
               </div>
@@ -424,7 +424,7 @@ export default function AdminDashboard({ sesion }) {
               <>
                 <div className="table-wrap">
                   <table className="dash-table">
-                    <thead><tr><th>Corredora</th><th>CI</th><th>Celular</th><th>Maratón</th><th>Monto</th><th>Método</th><th>Estado</th><th>Validado por</th><th>Acción</th></tr></thead>
+                    <thead><tr><th>Corredora</th><th>CI</th><th>Celular</th><th>Carrera</th><th>Monto</th><th>Método</th><th>Estado</th><th>Validado por</th><th>Acción</th></tr></thead>
                     <tbody>
                       {payments.map(p => (
                         <tr key={p.id}>
@@ -459,17 +459,17 @@ export default function AdminDashboard({ sesion }) {
           </div>
         )}
 
-        {/* MARATONES */}
+        {/* CARRERAS */}
         {activeTab === 'maratones' && !loading && (
           <div className="dash-card">
             <div className="dash-card-header">
-              <h2>Maratones ({marathonsFiltradas.length})</h2>
+              <h2>Carreras ({marathonsFiltradas.length})</h2>
               <div className="dash-search-bar">
                 <input type="text" placeholder="Buscar..." value={marathonSearch} onChange={e => setMarathonSearch(e.target.value)} className="dash-search-input" />
                 <button className="btn-primary-sm" onClick={openNewMarathonModal}>+ Nueva</button>
               </div>
             </div>
-            {marathonsFiltradas.length === 0 ? <div className="dash-empty"><span></span><p>No hay maratones.</p></div> : (
+            {marathonsFiltradas.length === 0 ? <div className="dash-empty"><span></span><p>No hay carreras.</p></div> : (
               <div className="table-wrap">
                 <table className="dash-table">
                   <thead><tr><th>Nombre</th><th>Ciudad</th><th>Fecha</th><th>Precio</th><th>Inscritos</th><th>Estado</th><th>Acciones</th></tr></thead>
@@ -566,12 +566,12 @@ export default function AdminDashboard({ sesion }) {
         )}
       </div>
 
-      {/* MODAL MARATÓN */}
+      {/* MODAL CARRERA */}
       {showMarathonModal && (
         <div className="modal-overlay" onClick={() => setShowMarathonModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{editingMarathon ? ' Editar' : 'Nueva'} Maratón</h2>
+              <h2>{editingMarathon ? ' Editar' : 'Nueva'} Carrera</h2>
               <button className="modal-close" onClick={() => setShowMarathonModal(false)}>×</button>
             </div>
             <form onSubmit={handleSaveMarathon}>
@@ -632,7 +632,7 @@ export default function AdminDashboard({ sesion }) {
               <div>
                 <dl className="payment-review-data">
                   <dt>Monto</dt><dd><strong>{(selectedPayment.amountCents / 100).toFixed(2)} Bs</strong></dd>
-                  <dt>Maratón</dt><dd>{selectedPayment.marathon}</dd>
+                  <dt>Carrera</dt><dd>{selectedPayment.marathon}</dd>
                   <dt>CI</dt><dd>{selectedPayment.runnerCi || '—'}</dd>
                   <dt>Celular</dt><dd>{selectedPayment.runnerPhone || '—'}</dd>
                   <dt>Email</dt><dd>{selectedPayment.runnerEmail || '—'}</dd>

@@ -15,7 +15,7 @@ export default function AboutUs() {
             <h2 className="section-title">El Centro de Apoyo<br />a la Mujer</h2>
             <p className="about-desc">
               El <strong>CAM</strong> es un espacio de acompañamiento, orientación legal y apoyo psicológico
-              para mujeres en situación de vulnerabilidad. La Maratón de la Mujer es
+              para mujeres en situación de vulnerabilidad. La Carrera de la Mujer es
               nuestro principal evento de recaudación para sostener y expandir estos servicios
               <strong> de forma gratuita</strong>.
             </p>

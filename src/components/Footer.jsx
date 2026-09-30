@@ -11,7 +11,7 @@ export default function Footer({ onAcceso }) {
           <div className="footer-grid">
             <div className="footer-brand">
               <div className="footer-logo">
-                <strong>CAM · Maratón de la Mujer</strong>
+                <strong>CAM · Carrera de la Mujer</strong>
               </div>
               <p>Corremos con propósito.</p>
               <p className="footer-mision">Un evento solidario del Centro de Apoyo a la Mujer destinado a financiar servicios de acompañamiento integral y gratuito.</p>

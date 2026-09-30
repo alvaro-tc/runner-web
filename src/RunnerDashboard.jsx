@@ -38,8 +38,8 @@ const OPEN = ['open', 'closing_soon']
 
 // El QR va como texto (payload) y lo dibujamos aquí; la imagen subida es solo respaldo
 function PaymentQr({ payload, imageUrl }) {
-  if (payload) return <QRCodeSVG value={payload} size={180} marginSize={2} className="payment-qr" role="img" aria-label="QR de pago de la maratón" />
-  if (imageUrl) return <img src={imageUrl} alt="QR de pago de la maratón" className="payment-qr" />
+  if (payload) return <QRCodeSVG value={payload} size={180} marginSize={2} className="payment-qr" role="img" aria-label="QR de pago de la carrera" />
+  if (imageUrl) return <img src={imageUrl} alt="QR de pago de la carrera" className="payment-qr" />
   return null
 }
 
@@ -61,14 +61,14 @@ export default function RunnerDashboard({ sesion }) {
       <div className="dashboard-header">
         <div className="container">
           <h1>Panel de corredora</h1>
-          <p>Centro de Apoyo a la Mujer · Maratón de la Mujer</p>
+          <p>Centro de Apoyo a la Mujer · Carrera de la Mujer</p>
         </div>
       </div>
 
       <div className="dashboard-body container">
         <div className="dash-tabs">
           {[
-            ['maratones', 'Maratones'],
+            ['maratones', 'Carreras'],
             ['inscripciones', 'Mis inscripciones'],
             ['perfil', 'Mis datos'],
           ].map(([key, label]) => (
@@ -152,15 +152,15 @@ function Marathons({ me, token, onRegistered }) {
   }
 
   if (marathons.length === 0) {
-    return <div className="dash-card"><div className="dash-empty"><span>🏁</span><p>No hay maratones publicadas en este momento.</p></div></div>
+    return <div className="dash-card"><div className="dash-empty"><span>🏁</span><p>No hay carreras publicadas en este momento.</p></div></div>
   }
 
   return (
     <div className="dash-card">
-      <div className="dash-card-header"><h2>Maratones</h2></div>
+      <div className="dash-card-header"><h2>Carreras</h2></div>
       <div className="table-wrap">
         <table className="dash-table">
-          <thead><tr><th>Maratón</th><th>Fecha</th><th>Ciudad</th><th>Distancia</th><th>Precio</th><th>Cupos</th><th></th></tr></thead>
+          <thead><tr><th>Carrera</th><th>Fecha</th><th>Ciudad</th><th>Distancia</th><th>Precio</th><th>Cupos</th><th></th></tr></thead>
           <tbody>
             {marathons.map((m) => (
               <tr key={m.id}>
@@ -274,7 +274,7 @@ function RegistrationForm({ marathon, me, token, onCancel, onDone }) {
         <label className="dash-check"><input type="checkbox" name="acceptsDonorCall" checked={form.acceptsDonorCall} onChange={change} /> Acepto que me llamen para la oportunidad de ser donador/a del CAM</label>
 
         <h3 className="form-section">2. Pago por QR</h3>
-        {!hasQr && <p className="notice notice-warning">Esta maratón todavía no tiene un QR de pago cargado. Vuelve a intentarlo más tarde.</p>}
+        {!hasQr && <p className="notice notice-warning">Esta carrera todavía no tiene un QR de pago cargado. Vuelve a intentarlo más tarde.</p>}
         <div className="qr-instructions">
           <PaymentQr payload={marathon.paymentQrPayload} imageUrl={marathon.paymentQrUrl} />
           <div>
