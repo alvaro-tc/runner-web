@@ -90,10 +90,11 @@ export async function getRegistrationPayments(registrationId, token) {
   return fetchApi(`/registrations/${registrationId}/payments`, { token })
 }
 
-export async function checkoutRegistration(registrationId, token) {
+export async function checkoutRegistration(registrationId, token, termsAccepted) {
   // Paso 3: Abrir el cobro QR manual. La confirmación llegará después de que
   // un organizador revise el comprobante subido por el corredor.
   // El backend exige Idempotency-Key en los cobros para no duplicarlos si el pedido se reintenta.
+  // termsAccepted sale del checkbox de Términos que marca la corredora; el backend rechaza todo lo que no sea true.
   const storageKey = `payment.idempotency.${registrationId}`
   const idempotencyKey = sessionStorage.getItem(storageKey) || crypto.randomUUID()
   sessionStorage.setItem(storageKey, idempotencyKey)
@@ -101,7 +102,7 @@ export async function checkoutRegistration(registrationId, token) {
   return fetchApi(`/registrations/${registrationId}/checkout`, {
     method: 'POST',
     headers: { 'Idempotency-Key': idempotencyKey },
-    body: JSON.stringify({ termsAccepted: true, method: 'qr_manual' }),
+    body: JSON.stringify({ termsAccepted, method: 'qr_manual' }),
     token
   })
 }

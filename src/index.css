@@ -912,6 +912,7 @@ textarea.form-input {
 .dash-form select { width: 100%; padding: .7rem 1rem; border: 2px solid #eee; border-radius: var(--radius-sm); font-family: inherit; font-size: .9rem; background: #fff; }
 .dash-form .dash-check { flex-direction: row; align-items: center; gap: .6rem; margin-bottom: .75rem; font-weight: 500; }
 .dash-form .dash-check input { width: auto; }
+.dash-form.terms-pay { padding: 0; }
 @media (max-width: 640px) { .dash-form-grid { grid-template-columns: 1fr; } .qr-instructions { flex-direction: column; } }
 .dash-form .form-section { margin: 1.75rem 0 0; font-size: 1rem; color: var(--ink); }
 .dash-form input::placeholder { color: #aaa; font-weight: 400; }

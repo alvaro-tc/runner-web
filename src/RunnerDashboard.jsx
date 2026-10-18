@@ -184,6 +184,20 @@ function Marathons({ me, token, onRegistered }) {
   )
 }
 
+// Marcar la casilla es la firma de conformidad (punto 11 de /terminos): sin ella no se abre el cobro
+function TermsCheck({ name, checked, onChange }) {
+  return (
+    <label className="dash-check">
+      <input type="checkbox" name={name} required checked={checked} onChange={onChange} />
+      <span>
+        He leído y acepto los{' '}
+        <a href="/terminos" target="_blank" rel="noopener noreferrer">Términos, Condiciones y Deslinde de Responsabilidad</a>{' '}
+        de CAM RUN. Si inscribo a un menor de edad, declaro ser su madre, padre o apoderado legal. *
+      </span>
+    </label>
+  )
+}
+
 function RegistrationForm({ marathon, me, token, onCancel, onDone }) {
   const [categories, setCategories] = useState([])
   const [form, setForm] = useState({
@@ -194,6 +208,7 @@ function RegistrationForm({ marathon, me, token, onCancel, onDone }) {
     categoryId: '',
     knowsCam: false,
     acceptsDonorCall: false,
+    termsAccepted: false,
   })
   const [estado, setEstado] = useState({})
   const [preview, setPreview] = useState(null)
@@ -216,14 +231,14 @@ function RegistrationForm({ marathon, me, token, onCancel, onDone }) {
     e.preventDefault()
     const proof = new FormData(e.target)
     setEstado({ saving: true })
-    const { categoryId, ...personal } = form
+    const { categoryId, termsAccepted, ...personal } = form
     // Los opcionales vacíos no se mandan: el backend valida formato si vienen
     const personalData = Object.fromEntries(
       Object.entries(personal).map(([k, v]) => [k, typeof v === 'string' ? v.trim() : v]).filter(([, v]) => v !== ''),
     )
     try {
       const reg = await createRegistration(marathon.id, personalData, token, categoryId || undefined)
-      const { payment } = await checkoutRegistration(reg.id, token)
+      const { payment } = await checkoutRegistration(reg.id, token, termsAccepted)
       await uploadPaymentProof(payment.id, proof.get('file'), proof.get('reference'), token)
       onDone()
     } catch (err) {
@@ -292,8 +307,11 @@ function RegistrationForm({ marathon, me, token, onCancel, onDone }) {
         </div>
         {preview && <img src={preview} alt="Vista previa del comprobante" className="proof-preview" />}
 
+        <h3 className="form-section">3. Términos y condiciones</h3>
+        <TermsCheck name="termsAccepted" checked={form.termsAccepted} onChange={change} />
+
         {estado.error && <p className="dash-error">{estado.error}</p>}
-        <button className="btn-primary dash-submit" type="submit" disabled={estado.saving || !hasQr}>{estado.saving ? 'Enviando…' : 'Enviar inscripción y comprobante'}</button>
+        <button className="btn-primary dash-submit" type="submit" disabled={estado.saving || !hasQr || !form.termsAccepted}>{estado.saving ? 'Enviando…' : 'Enviar inscripción y comprobante'}</button>
       </form>
     </div>
   )
@@ -333,6 +351,7 @@ function Registrations({ me, token }) {
 function RegistrationCard({ reg, me, token, onChange }) {
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [termsAccepted, setTermsAccepted] = useState(false)
   // Del más nuevo al más viejo: el primero es el cobro vigente
   const current = reg.payments[0]
   const canPay = ['draft', 'pending_payment'].includes(reg.status) && current?.status !== 'pending'
@@ -418,9 +437,12 @@ function RegistrationCard({ reg, me, token, onChange }) {
         )}
 
         {canPay && (
-          <button className="btn-primary" disabled={busy} onClick={() => run(() => checkoutRegistration(reg.id, token))}>
-            {busy ? 'Generando pago…' : 'Generar pago'}
-          </button>
+          <div className="dash-form terms-pay">
+            <TermsCheck checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} />
+            <button className="btn-primary" disabled={busy || !termsAccepted} onClick={() => run(() => checkoutRegistration(reg.id, token, termsAccepted))}>
+              {busy ? 'Generando pago…' : 'Generar pago'}
+            </button>
+          </div>
         )}
 
         {error && <p className="dash-error">{error}</p>}

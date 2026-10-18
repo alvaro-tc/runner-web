@@ -7,6 +7,7 @@ export default function Footer() {
       <nav className="legal-footer-links" aria-label="Enlaces legales">
         <a href="/">Inicio</a>
         <a href="/privacidad">Política de privacidad</a>
+        <a href="/terminos">Términos y condiciones</a>
         <a href="/eliminar-cuenta">Eliminar tu cuenta</a>
         <a href="mailto:alvarocallet@gmail.com">alvarocallet@gmail.com</a>
       </nav>

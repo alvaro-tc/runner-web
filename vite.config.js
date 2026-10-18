@@ -16,6 +16,7 @@ export default defineConfig({
         main: resolve(raiz, 'index.html'),
         privacidad: resolve(raiz, 'privacidad/index.html'),
         eliminarCuenta: resolve(raiz, 'eliminar-cuenta/index.html'),
+        terminos: resolve(raiz, 'terminos/index.html'),
       },
     },
   },
