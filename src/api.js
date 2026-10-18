@@ -159,6 +159,18 @@ export async function getAdminMarathon(token, marathonId) {
   return fetchApi(`/admin/marathons/${marathonId}`, { token })
 }
 
+export async function getManualPodium(token, marathonId) {
+  return fetchApi(`/admin/marathons/${marathonId}/results`, { token })
+}
+
+export async function saveManualPodium(token, marathonId, results) {
+  return fetchApi(`/admin/marathons/${marathonId}/results`, {
+    method: 'POST',
+    body: JSON.stringify({ results }),
+    token,
+  })
+}
+
 export async function createMarathon(token, data) {
   return fetchApi('/admin/marathons', {
     method: 'POST',
