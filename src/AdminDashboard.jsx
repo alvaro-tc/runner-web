@@ -14,6 +14,7 @@ import {
   deleteMarathon,
   publishMarathon,
   unpublishMarathon,
+  downloadRegistrantsCsv,
   deleteUser,
   updateUser,
   approvePaymentProof,
@@ -374,6 +375,11 @@ export default function AdminDashboard({ sesion }) {
     } catch (err) { alert('Error: ' + err.message) }
   }
 
+  async function handleExportCsv(m) {
+    try { await downloadRegistrantsCsv(sesion.accessToken, m) }
+    catch (err) { alert('Error: ' + err.message) }
+  }
+
   function openQrModal(m) {
     setQrMarathon(m)
     setQrAmount((m.priceCents / 100).toFixed(2))
@@ -584,6 +590,7 @@ export default function AdminDashboard({ sesion }) {
                         <td className="actions-cell">
                           <button className="btn-outline-sm" onClick={() => openEditMarathonModal(m)}>Editar</button>
                           <button className="btn-outline-sm" onClick={() => openQrModal(m)}>QR</button>
+                          <button className="btn-outline-sm" onClick={() => handleExportCsv(m)}>Exportar CSV</button>
                           <button className="btn-outline-sm" onClick={() => handleTogglePublish(m)}>{m.published ? 'Ocultar' : 'Publicar'}</button>
                           <button className="btn-danger-sm" onClick={() => handleDeleteMarathon(m)}>Eliminar</button>
                         </td>

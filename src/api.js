@@ -172,6 +172,23 @@ export async function saveManualPodium(token, marathonId, results) {
   })
 }
 
+// El CSV llega como archivo, fuera del sobre { data }: por eso no pasa por fetchApi
+export async function downloadRegistrantsCsv(token, marathon) {
+  const res = await fetch(`${BASE}/admin/marathons/${marathon.id}/registrants.csv`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) {
+    const json = await res.json().catch(() => null)
+    throw new Error(json?.error?.message || `Error ${res.status}`)
+  }
+  const url = URL.createObjectURL(await res.blob())
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `inscritos-${marathon.slug || marathon.id}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 export async function createMarathon(token, data) {
   return fetchApi('/admin/marathons', {
     method: 'POST',
