@@ -49,7 +49,7 @@ export async function updateMe(data, token) {
   return fetchApi('/users/me', { method: 'PATCH', body: JSON.stringify(data), token })
 }
 
-// MARATONES PÚBLICAS
+// CARRERAS PÚBLICAS
 export async function getMarathons() {
   const result = await fetchApi('/marathons')
   return Array.isArray(result) ? result : result.items || []
@@ -90,10 +90,11 @@ export async function getRegistrationPayments(registrationId, token) {
   return fetchApi(`/registrations/${registrationId}/payments`, { token })
 }
 
-export async function checkoutRegistration(registrationId, token) {
+export async function checkoutRegistration(registrationId, token, termsAccepted) {
   // Paso 3: Abrir el cobro QR manual. La confirmación llegará después de que
   // un organizador revise el comprobante subido por el corredor.
   // El backend exige Idempotency-Key en los cobros para no duplicarlos si el pedido se reintenta.
+  // termsAccepted sale del checkbox de Términos que marca la corredora; el backend rechaza todo lo que no sea true.
   const storageKey = `payment.idempotency.${registrationId}`
   const idempotencyKey = sessionStorage.getItem(storageKey) || crypto.randomUUID()
   sessionStorage.setItem(storageKey, idempotencyKey)
@@ -101,7 +102,7 @@ export async function checkoutRegistration(registrationId, token) {
   return fetchApi(`/registrations/${registrationId}/checkout`, {
     method: 'POST',
     headers: { 'Idempotency-Key': idempotencyKey },
-    body: JSON.stringify({ termsAccepted: true, method: 'qr_manual' }),
+    body: JSON.stringify({ termsAccepted, method: 'qr_manual' }),
     token
   })
 }
@@ -150,13 +151,42 @@ export async function getAdminRegistrations(token, { status = '', search = '', p
   return fetchApi(`/admin/registrations?${params}`, { token })
 }
 
-// ADMIN: MARATONES
+// ADMIN: CARRERAS
 export async function getAdminMarathons(token) {
   return fetchApi('/admin/marathons', { token })
 }
 
 export async function getAdminMarathon(token, marathonId) {
   return fetchApi(`/admin/marathons/${marathonId}`, { token })
+}
+
+export async function getManualPodium(token, marathonId) {
+  return fetchApi(`/admin/marathons/${marathonId}/results`, { token })
+}
+
+export async function saveManualPodium(token, marathonId, results) {
+  return fetchApi(`/admin/marathons/${marathonId}/results`, {
+    method: 'POST',
+    body: JSON.stringify({ results }),
+    token,
+  })
+}
+
+// El CSV llega como archivo, fuera del sobre { data }: por eso no pasa por fetchApi
+export async function downloadRegistrantsCsv(token, marathon) {
+  const res = await fetch(`${BASE}/admin/marathons/${marathon.id}/registrants.csv`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) {
+    const json = await res.json().catch(() => null)
+    throw new Error(json?.error?.message || `Error ${res.status}`)
+  }
+  const url = URL.createObjectURL(await res.blob())
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `inscritos-${marathon.slug || marathon.id}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 export async function createMarathon(token, data) {

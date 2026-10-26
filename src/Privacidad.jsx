@@ -47,7 +47,7 @@ export default function Privacidad() {
         </p>
         <p>
           Usamos esa ubicación para trazar la ruta, calcular distancia, ritmo y desnivel, y
-          mostrar tu posición en el mapa en vivo de la maratón.
+          mostrar tu posición en el mapa en vivo de la carrera.
         </p>
         <p>
           La grabación <strong>se inicia siempre por una acción explícita tuya</strong> y se

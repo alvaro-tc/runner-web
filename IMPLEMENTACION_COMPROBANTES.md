@@ -7,21 +7,21 @@ Rama: `feat/manual-payment-proof-flow`
 
 Se conectó `runner-web` con el flujo existente de `runner-api` para que los pagos por QR estático puedan verificarse manualmente por un usuario con rol `admin` u `organizer`.
 
-El sistema no se conecta a Yape, a un banco ni a una pasarela de pagos. El QR pertenece a la maratón y se muestra como imagen estática cuando está disponible. El pago queda pendiente hasta que un organizador revisa el comprobante y lo aprueba.
+El sistema no se conecta a Yape, a un banco ni a una pasarela de pagos. El QR pertenece a la carrera y se muestra como imagen estática cuando está disponible. El pago queda pendiente hasta que un organizador revisa el comprobante y lo aprueba.
 
 ## Requisitos cubiertos
 
-### Maratones en la página principal
+### Carreras en la página principal
 
 - La portada consulta `GET /marathons`.
-- Se muestran las maratones publicadas desde la base de datos.
+- Se muestran las carreras publicadas desde la base de datos.
 - Se muestran nombre, ubicación, fecha, estado y acción para iniciar sesión/inscribirse.
-- Se normalizó la respuesta paginada del backend (`{ items, meta }`) para que el frontend trabaje con el array de maratones.
+- Se normalizó la respuesta paginada del backend (`{ items, meta }`) para que el frontend trabaje con el array de carreras.
 
 ### Subida del comprobante
 
 - El checkout del frontend ahora usa `method: "qr_manual"`.
-- Se muestra el QR configurado para la maratón.
+- Se muestra el QR configurado para la carrera.
 - Se muestra la referencia o glosa de la inscripción.
 - El corredor puede seleccionar una imagen y enviarla mediante `multipart/form-data`.
 - Se permite enviar una referencia opcional de la transacción.
@@ -43,7 +43,7 @@ El sistema no se conecta a Yape, a un banco ni a una pasarela de pagos. El QR pe
 - `admin` y `organizer` acceden al panel administrativo.
 - Se agregó la pestaña `Comprobantes QR`.
 - La cola consume `GET /admin/payment-proofs`.
-- Cada comprobante muestra imagen, corredor, maratón, monto y referencia.
+- Cada comprobante muestra imagen, corredor, carrera, monto y referencia.
 - El organizador puede aprobar o rechazar.
 - El rechazo exige un motivo mediante el diálogo del navegador.
 - La cola se recarga después de cada acción.
@@ -55,9 +55,9 @@ El sistema no se conecta a Yape, a un banco ni a una pasarela de pagos. El QR pe
 | `src/api.js` | Checkout QR manual, soporte multipart, consulta de pago, recibo y endpoints administrativos de comprobantes. Normalización del catálogo paginado. |
 | `src/RunnerDashboard.jsx` | Flujo de inscripción, QR, subida de imagen, estados de revisión/rechazo/confirmación y recibo condicionado. |
 | `src/AdminDashboard.jsx` | Cola visual de comprobantes, imágenes y acciones de aprobar/rechazar. |
-| `src/App.jsx` | Catálogo público de maratones desde la API y acceso de `organizer` al panel administrativo. |
+| `src/App.jsx` | Catálogo público de carreras desde la API y acceso de `organizer` al panel administrativo. |
 | `src/Header.jsx` | Etiqueta visual específica para el rol `Organizador`. |
-| `src/index.css` | Estilos responsive para maratones, QR, estados y tarjetas de comprobantes. |
+| `src/index.css` | Estilos responsive para carreras, QR, estados y tarjetas de comprobantes. |
 
 ## Endpoints utilizados
 
@@ -95,7 +95,7 @@ El sistema no se conecta a Yape, a un banco ni a una pasarela de pagos. El QR pe
 ## Decisiones y límites
 
 - No se agregó integración bancaria real.
-- El QR continúa siendo estático y configurado por la organización de la maratón.
+- El QR continúa siendo estático y configurado por la organización de la carrera.
 - La aprobación manual sigue siendo la fuente de verdad del pago.
 - El backend ya contenía la lógica de seguridad y transición de estados, por lo que no fue necesario modificarlo funcionalmente.
 - Las URLs de imágenes siguen dependiendo de la configuración existente de `StorageService`; la protección adicional de archivos privados queda como mejora independiente.
@@ -112,7 +112,7 @@ El sistema no se conecta a Yape, a un banco ni a una pasarela de pagos. El QR pe
 
 ## Flujo esperado de punta a punta
 
-1. El usuario abre la portada y ve las maratones cargadas desde la API.
+1. El usuario abre la portada y ve las carreras cargadas desde la API.
 2. Inicia sesión y crea una inscripción.
 3. El frontend abre un cobro `qr_manual`.
 4. El usuario paga desde su aplicación bancaria usando el QR estático.

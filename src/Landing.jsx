@@ -204,6 +204,7 @@ export default function Landing({ onAcceso, onRegistro }) {
             <a href={FACEBOOK} target="_blank" rel="noreferrer">Facebook</a>
             <a href={WHATSAPP} target="_blank" rel="noreferrer">WhatsApp</a>
             <a href="/privacidad">Privacidad</a>
+            <a href="/terminos">Términos</a>
           </nav>
           <p className="lp-foot-copy">© 2026 Centro de Apoyo a la Mujer</p>
         </div>

@@ -38,8 +38,8 @@ const OPEN = ['open', 'closing_soon']
 
 // El QR va como texto (payload) y lo dibujamos aquí; la imagen subida es solo respaldo
 function PaymentQr({ payload, imageUrl }) {
-  if (payload) return <QRCodeSVG value={payload} size={180} marginSize={2} className="payment-qr" role="img" aria-label="QR de pago de la maratón" />
-  if (imageUrl) return <img src={imageUrl} alt="QR de pago de la maratón" className="payment-qr" />
+  if (payload) return <QRCodeSVG value={payload} size={180} marginSize={2} className="payment-qr" role="img" aria-label="QR de pago de la carrera" />
+  if (imageUrl) return <img src={imageUrl} alt="QR de pago de la carrera" className="payment-qr" />
   return null
 }
 
@@ -61,14 +61,14 @@ export default function RunnerDashboard({ sesion }) {
       <div className="dashboard-header">
         <div className="container">
           <h1>Panel de corredora</h1>
-          <p>Centro de Apoyo a la Mujer · Maratón de la Mujer</p>
+          <p>Centro de Apoyo a la Mujer · Carrera de la Mujer</p>
         </div>
       </div>
 
       <div className="dashboard-body container">
         <div className="dash-tabs">
           {[
-            ['maratones', 'Maratones'],
+            ['maratones', 'Carreras'],
             ['inscripciones', 'Mis inscripciones'],
             ['perfil', 'Mis datos'],
           ].map(([key, label]) => (
@@ -152,15 +152,15 @@ function Marathons({ me, token, onRegistered }) {
   }
 
   if (marathons.length === 0) {
-    return <div className="dash-card"><div className="dash-empty"><span>🏁</span><p>No hay maratones publicadas en este momento.</p></div></div>
+    return <div className="dash-card"><div className="dash-empty"><span>🏁</span><p>No hay carreras publicadas en este momento.</p></div></div>
   }
 
   return (
     <div className="dash-card">
-      <div className="dash-card-header"><h2>Maratones</h2></div>
+      <div className="dash-card-header"><h2>Carreras</h2></div>
       <div className="table-wrap">
         <table className="dash-table">
-          <thead><tr><th>Maratón</th><th>Fecha</th><th>Ciudad</th><th>Distancia</th><th>Precio</th><th>Cupos</th><th></th></tr></thead>
+          <thead><tr><th>Carrera</th><th>Fecha</th><th>Ciudad</th><th>Distancia</th><th>Precio</th><th>Cupos</th><th></th></tr></thead>
           <tbody>
             {marathons.map((m) => (
               <tr key={m.id}>
@@ -184,6 +184,20 @@ function Marathons({ me, token, onRegistered }) {
   )
 }
 
+// Marcar la casilla es la firma de conformidad (punto 11 de /terminos): sin ella no se abre el cobro
+function TermsCheck({ name, checked, onChange }) {
+  return (
+    <label className="dash-check">
+      <input type="checkbox" name={name} required checked={checked} onChange={onChange} />
+      <span>
+        He leído y acepto los{' '}
+        <a href="/terminos" target="_blank" rel="noopener noreferrer">Términos, Condiciones y Deslinde de Responsabilidad</a>{' '}
+        de CAM RUN. Si inscribo a un menor de edad, declaro ser su madre, padre o apoderado legal. *
+      </span>
+    </label>
+  )
+}
+
 function RegistrationForm({ marathon, me, token, onCancel, onDone }) {
   const [categories, setCategories] = useState([])
   const [form, setForm] = useState({
@@ -194,6 +208,7 @@ function RegistrationForm({ marathon, me, token, onCancel, onDone }) {
     categoryId: '',
     knowsCam: false,
     acceptsDonorCall: false,
+    termsAccepted: false,
   })
   const [estado, setEstado] = useState({})
   const [preview, setPreview] = useState(null)
@@ -216,14 +231,14 @@ function RegistrationForm({ marathon, me, token, onCancel, onDone }) {
     e.preventDefault()
     const proof = new FormData(e.target)
     setEstado({ saving: true })
-    const { categoryId, ...personal } = form
+    const { categoryId, termsAccepted, ...personal } = form
     // Los opcionales vacíos no se mandan: el backend valida formato si vienen
     const personalData = Object.fromEntries(
       Object.entries(personal).map(([k, v]) => [k, typeof v === 'string' ? v.trim() : v]).filter(([, v]) => v !== ''),
     )
     try {
       const reg = await createRegistration(marathon.id, personalData, token, categoryId || undefined)
-      const { payment } = await checkoutRegistration(reg.id, token)
+      const { payment } = await checkoutRegistration(reg.id, token, termsAccepted)
       await uploadPaymentProof(payment.id, proof.get('file'), proof.get('reference'), token)
       onDone()
     } catch (err) {
@@ -274,7 +289,7 @@ function RegistrationForm({ marathon, me, token, onCancel, onDone }) {
         <label className="dash-check"><input type="checkbox" name="acceptsDonorCall" checked={form.acceptsDonorCall} onChange={change} /> Acepto que me llamen para la oportunidad de ser donador/a del CAM</label>
 
         <h3 className="form-section">2. Pago por QR</h3>
-        {!hasQr && <p className="notice notice-warning">Esta maratón todavía no tiene un QR de pago cargado. Vuelve a intentarlo más tarde.</p>}
+        {!hasQr && <p className="notice notice-warning">Esta carrera todavía no tiene un QR de pago cargado. Vuelve a intentarlo más tarde.</p>}
         <div className="qr-instructions">
           <PaymentQr payload={marathon.paymentQrPayload} imageUrl={marathon.paymentQrUrl} />
           <div>
@@ -292,8 +307,11 @@ function RegistrationForm({ marathon, me, token, onCancel, onDone }) {
         </div>
         {preview && <img src={preview} alt="Vista previa del comprobante" className="proof-preview" />}
 
+        <h3 className="form-section">3. Términos y condiciones</h3>
+        <TermsCheck name="termsAccepted" checked={form.termsAccepted} onChange={change} />
+
         {estado.error && <p className="dash-error">{estado.error}</p>}
-        <button className="btn-primary dash-submit" type="submit" disabled={estado.saving || !hasQr}>{estado.saving ? 'Enviando…' : 'Enviar inscripción y comprobante'}</button>
+        <button className="btn-primary dash-submit" type="submit" disabled={estado.saving || !hasQr || !form.termsAccepted}>{estado.saving ? 'Enviando…' : 'Enviar inscripción y comprobante'}</button>
       </form>
     </div>
   )
@@ -333,6 +351,7 @@ function Registrations({ me, token }) {
 function RegistrationCard({ reg, me, token, onChange }) {
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [termsAccepted, setTermsAccepted] = useState(false)
   // Del más nuevo al más viejo: el primero es el cobro vigente
   const current = reg.payments[0]
   const canPay = ['draft', 'pending_payment'].includes(reg.status) && current?.status !== 'pending'
@@ -418,9 +437,12 @@ function RegistrationCard({ reg, me, token, onChange }) {
         )}
 
         {canPay && (
-          <button className="btn-primary" disabled={busy} onClick={() => run(() => checkoutRegistration(reg.id, token))}>
-            {busy ? 'Generando pago…' : 'Generar pago'}
-          </button>
+          <div className="dash-form terms-pay">
+            <TermsCheck checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} />
+            <button className="btn-primary" disabled={busy || !termsAccepted} onClick={() => run(() => checkoutRegistration(reg.id, token, termsAccepted))}>
+              {busy ? 'Generando pago…' : 'Generar pago'}
+            </button>
+          </div>
         )}
 
         {error && <p className="dash-error">{error}</p>}

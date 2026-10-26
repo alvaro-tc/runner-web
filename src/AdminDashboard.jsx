@@ -5,6 +5,8 @@ import {
   confirmTransfer,
   getAdminRegistrations,
   getAdminMarathons,
+  getManualPodium,
+  saveManualPodium,
   getAdminUsers,
   uploadMarathonQR,
   createMarathon,
@@ -12,6 +14,7 @@ import {
   deleteMarathon,
   publishMarathon,
   unpublishMarathon,
+  downloadRegistrantsCsv,
   deleteUser,
   updateUser,
   approvePaymentProof,
@@ -46,6 +49,19 @@ const ROL_LABEL = { runner: 'Corredora', organizer: 'Organizador', admin: 'Admin
 
 const PAGE_SIZE_PAGOS = 20
 
+function parseRaceTime(value) {
+  const match = /^(\d+):([0-5]\d):([0-5]\d)$/.exec(value.trim())
+  if (!match) return null
+  return Number(match[1]) * 3600 + Number(match[2]) * 60 + Number(match[3])
+}
+
+function formatRaceTime(seconds) {
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  const remainder = seconds % 60
+  return [hours, minutes, remainder].map(value => String(value).padStart(2, '0')).join(':')
+}
+
 export default function AdminDashboard({ sesion }) {
   const esAdmin = sesion.user.role === 'admin'
   const [activeTab, setActiveTab] = useState('inscripciones')
@@ -64,6 +80,15 @@ export default function AdminDashboard({ sesion }) {
   const [registrations, setRegistrations] = useState([])
   const [marathons, setMarathons] = useState([])
   const [users, setUsers] = useState([])
+  const [podiumMarathonId, setPodiumMarathonId] = useState('')
+  const [podiumRows, setPodiumRows] = useState([
+    { bibNumber: '', finishTime: '', chipTime: '' },
+    { bibNumber: '', finishTime: '', chipTime: '' },
+    { bibNumber: '', finishTime: '', chipTime: '' },
+  ])
+  const [podiumLoading, setPodiumLoading] = useState(false)
+  const [podiumSaving, setPodiumSaving] = useState(false)
+  const [podiumMessage, setPodiumMessage] = useState('')
 
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -91,9 +116,21 @@ export default function AdminDashboard({ sesion }) {
   useEffect(() => {
     if (activeTab === 'inscripciones') fetchRegistrations()
     if (activeTab === 'maratones') fetchMarathons()
+    if (activeTab === 'podio' && marathons.length === 0) fetchMarathons()
     if (activeTab === 'usuarios') fetchUsers()
     if (activeTab === 'app') getApkInfo(sesion.accessToken).then(setApkInfo).catch(e => setError(e.message))
   }, [activeTab, page])
+
+  useEffect(() => {
+    if (activeTab !== 'podio' || marathons.length === 0) return
+    if (!podiumMarathonId || !marathons.some(m => m.id === podiumMarathonId)) {
+      setPodiumMarathonId(marathons[0].id)
+    }
+  }, [activeTab, marathons, podiumMarathonId])
+
+  useEffect(() => {
+    if (activeTab === 'podio' && podiumMarathonId) fetchPodium()
+  }, [activeTab, podiumMarathonId])
 
   async function handleUploadApk(e) {
     e.preventDefault()
@@ -115,7 +152,7 @@ export default function AdminDashboard({ sesion }) {
     if (activeTab === 'pagos') fetchPayments()
   }, [activeTab, payPage, payStatus, payMarathon])
 
-  // El filtro por maratón necesita la lista; el organizador también puede leerla.
+  // El filtro por carrera necesita la lista; el organizador también puede leerla.
   useEffect(() => {
     if (activeTab === 'pagos' && marathons.length === 0) {
       getAdminMarathons(sesion.accessToken).then(setMarathons).catch(() => {})
@@ -161,6 +198,68 @@ export default function AdminDashboard({ sesion }) {
     try { setMarathons(await getAdminMarathons(sesion.accessToken)) }
     catch (err) { setError('Error: ' + err.message) }
     finally { setLoading(false) }
+  }
+
+  async function fetchPodium({ clearMessage = true } = {}) {
+    setPodiumLoading(true)
+    if (clearMessage) setPodiumMessage('')
+    try {
+      const registered = await getManualPodium(sesion.accessToken, podiumMarathonId)
+      setPodiumRows([1, 2, 3].map(rank => {
+        const result = registered.find(item => item.overallRank === rank)
+        return {
+          bibNumber: result?.bibNumber || '',
+          finishTime: result ? formatRaceTime(result.finishTimeSeconds) : '',
+          chipTime: result?.chipTimeSeconds ? formatRaceTime(result.chipTimeSeconds) : '',
+        }
+      }))
+    } catch (err) {
+      setPodiumMessage(`No se pudo cargar el podio: ${err.message}`)
+    } finally {
+      setPodiumLoading(false)
+    }
+  }
+
+  function updatePodiumRow(index, field, value) {
+    setPodiumRows(rows => rows.map((row, i) => i === index ? { ...row, [field]: value } : row))
+  }
+
+  async function handleSavePodium(e) {
+    e.preventDefault()
+    const normalized = podiumRows.map(row => ({
+      bibNumber: row.bibNumber.trim(),
+      finishTimeSeconds: parseRaceTime(row.finishTime),
+      chipTimeSeconds: row.chipTime.trim() ? parseRaceTime(row.chipTime) : undefined,
+    }))
+    if (normalized.some(row => !row.bibNumber || !row.finishTimeSeconds || row.chipTimeSeconds === null)) {
+      setPodiumMessage('Completa los tres dorsales y los tiempos oficiales en formato hh:mm:ss. El tiempo de chip es opcional.')
+      return
+    }
+    if (new Set(normalized.map(row => row.bibNumber)).size !== 3) {
+      setPodiumMessage('Cada puesto debe corresponder a un dorsal diferente.')
+      return
+    }
+
+    setPodiumSaving(true)
+    setPodiumMessage('')
+    try {
+      const result = await saveManualPodium(
+        sesion.accessToken,
+        podiumMarathonId,
+        normalized.map((row, index) => ({
+          bibNumber: row.bibNumber,
+          finishTimeSeconds: row.finishTimeSeconds,
+          ...(row.chipTimeSeconds ? { chipTimeSeconds: row.chipTimeSeconds } : {}),
+          overallRank: index + 1,
+        })),
+      )
+      setPodiumMessage(`Podio registrado: ${result.imported} puestos guardados.`)
+      await fetchPodium({ clearMessage: false })
+    } catch (err) {
+      setPodiumMessage(`No se pudo guardar el podio: ${err.message}`)
+    } finally {
+      setPodiumSaving(false)
+    }
   }
 
   async function fetchUsers() {
@@ -251,10 +350,10 @@ export default function AdminDashboard({ sesion }) {
       }
       if (editingMarathon) {
         await updateMarathon(sesion.accessToken, editingMarathon.id, data)
-        alert('Maratón actualizada')
+        alert('Carrera actualizada')
       } else {
         await createMarathon(sesion.accessToken, data)
-        alert('Maratón creada')
+        alert('Carrera creada')
       }
       setShowMarathonModal(false)
       fetchMarathons()
@@ -274,6 +373,11 @@ export default function AdminDashboard({ sesion }) {
       else { await publishMarathon(sesion.accessToken, m.id); alert('Publicada') }
       fetchMarathons()
     } catch (err) { alert('Error: ' + err.message) }
+  }
+
+  async function handleExportCsv(m) {
+    try { await downloadRegistrantsCsv(sesion.accessToken, m) }
+    catch (err) { alert('Error: ' + err.message) }
   }
 
   function openQrModal(m) {
@@ -320,7 +424,7 @@ export default function AdminDashboard({ sesion }) {
       <div className="dashboard-header">
         <div className="container">
           <h1>{esAdmin ? 'Panel Administrativo' : 'Panel de Organizador'}</h1>
-          <p>Centro de Apoyo a la Mujer · Maratón de la Mujer</p>
+          <p>Centro de Apoyo a la Mujer · Carrera de la Mujer</p>
         </div>
       </div>
 
@@ -329,7 +433,8 @@ export default function AdminDashboard({ sesion }) {
           {[
             ['inscripciones', 'Inscripciones'],
             ['pagos', 'Validar cobros'],
-            esAdmin && ['maratones', 'Maratones'],
+            esAdmin && ['maratones', 'Carreras'],
+            esAdmin && ['podio', 'Podio oficial'],
             ['usuarios', 'Usuarios'],
             esAdmin && ['app', 'App Android'],
           ].filter(Boolean).map(([key, label]) => (
@@ -358,7 +463,7 @@ export default function AdminDashboard({ sesion }) {
               <>
                 <div className="table-wrap">
                   <table className="dash-table">
-                    <thead><tr><th>Corredora</th><th>CI</th><th>Celular</th><th>CAM</th><th>Donador</th><th>Maratón</th><th>Dorsal</th><th>Total</th><th>Recibo</th></tr></thead>
+                    <thead><tr><th>Corredora</th><th>CI</th><th>Celular</th><th>CAM</th><th>Donador</th><th>Carrera</th><th>Dorsal</th><th>Total</th><th>Recibo</th></tr></thead>
                     <tbody>
                       {registrations.map(r => (
                         <tr key={r.id}>
@@ -414,8 +519,8 @@ export default function AdminDashboard({ sesion }) {
                   <option value="">Todos los estados</option>
                   {Object.entries(PAGO_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select>
-                <select value={payMarathon} onChange={e => { setPayMarathon(e.target.value); setPayPage(1) }} aria-label="Maratón">
-                  <option value="">Todas las maratones</option>
+                <select value={payMarathon} onChange={e => { setPayMarathon(e.target.value); setPayPage(1) }} aria-label="Carrera">
+                  <option value="">Todas las carreras</option>
                   {marathons.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                 </select>
               </div>
@@ -424,7 +529,7 @@ export default function AdminDashboard({ sesion }) {
               <>
                 <div className="table-wrap">
                   <table className="dash-table">
-                    <thead><tr><th>Corredora</th><th>CI</th><th>Celular</th><th>Maratón</th><th>Monto</th><th>Método</th><th>Estado</th><th>Validado por</th><th>Acción</th></tr></thead>
+                    <thead><tr><th>Corredora</th><th>CI</th><th>Celular</th><th>Carrera</th><th>Monto</th><th>Método</th><th>Estado</th><th>Validado por</th><th>Acción</th></tr></thead>
                     <tbody>
                       {payments.map(p => (
                         <tr key={p.id}>
@@ -459,17 +564,17 @@ export default function AdminDashboard({ sesion }) {
           </div>
         )}
 
-        {/* MARATONES */}
+        {/* CARRERAS */}
         {activeTab === 'maratones' && !loading && (
           <div className="dash-card">
             <div className="dash-card-header">
-              <h2>Maratones ({marathonsFiltradas.length})</h2>
+              <h2>Carreras ({marathonsFiltradas.length})</h2>
               <div className="dash-search-bar">
                 <input type="text" placeholder="Buscar..." value={marathonSearch} onChange={e => setMarathonSearch(e.target.value)} className="dash-search-input" />
                 <button className="btn-primary-sm" onClick={openNewMarathonModal}>+ Nueva</button>
               </div>
             </div>
-            {marathonsFiltradas.length === 0 ? <div className="dash-empty"><span></span><p>No hay maratones.</p></div> : (
+            {marathonsFiltradas.length === 0 ? <div className="dash-empty"><span></span><p>No hay carreras.</p></div> : (
               <div className="table-wrap">
                 <table className="dash-table">
                   <thead><tr><th>Nombre</th><th>Ciudad</th><th>Fecha</th><th>Precio</th><th>Inscritos</th><th>Estado</th><th>Acciones</th></tr></thead>
@@ -485,6 +590,7 @@ export default function AdminDashboard({ sesion }) {
                         <td className="actions-cell">
                           <button className="btn-outline-sm" onClick={() => openEditMarathonModal(m)}>Editar</button>
                           <button className="btn-outline-sm" onClick={() => openQrModal(m)}>QR</button>
+                          <button className="btn-outline-sm" onClick={() => handleExportCsv(m)}>Exportar CSV</button>
                           <button className="btn-outline-sm" onClick={() => handleTogglePublish(m)}>{m.published ? 'Ocultar' : 'Publicar'}</button>
                           <button className="btn-danger-sm" onClick={() => handleDeleteMarathon(m)}>Eliminar</button>
                         </td>
@@ -493,6 +599,69 @@ export default function AdminDashboard({ sesion }) {
                   </tbody>
                 </table>
               </div>
+            )}
+          </div>
+        )}
+
+        {/* PODIO OFICIAL */}
+        {activeTab === 'podio' && esAdmin && (
+          <div className="dash-card">
+            <div className="dash-card-header">
+              <h2>Registrar podio oficial</h2>
+              <select
+                value={podiumMarathonId}
+                onChange={e => setPodiumMarathonId(e.target.value)}
+                aria-label="Carrera para registrar resultados"
+                disabled={marathons.length === 0 || podiumSaving}
+              >
+                {marathons.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+              </select>
+            </div>
+            {podiumLoading ? (
+              <div className="dash-loading"><span>Cargando resultados…</span></div>
+            ) : (
+              <form className="podium-form" onSubmit={handleSavePodium}>
+                <p>Ingresa los dorsales y tiempos oficiales según la planilla física. El tiempo de chip es opcional.</p>
+                {podiumRows.map((row, index) => (
+                  <div className="podium-row" key={index}>
+                    <strong>{['1.er lugar', '2.º lugar', '3.er lugar'][index]}</strong>
+                    <label className="form-label">Dorsal
+                      <input
+                        className="form-input"
+                        value={row.bibNumber}
+                        onChange={e => updatePodiumRow(index, 'bibNumber', e.target.value)}
+                        maxLength={40}
+                        required
+                      />
+                    </label>
+                    <label className="form-label">Tiempo oficial (hh:mm:ss)
+                      <input
+                        className="form-input"
+                        value={row.finishTime}
+                        onChange={e => updatePodiumRow(index, 'finishTime', e.target.value)}
+                        placeholder="03:42:18"
+                        inputMode="numeric"
+                        pattern="[0-9]+:[0-5][0-9]:[0-5][0-9]"
+                        required
+                      />
+                    </label>
+                    <label className="form-label">Tiempo de chip
+                      <input
+                        className="form-input"
+                        value={row.chipTime}
+                        onChange={e => updatePodiumRow(index, 'chipTime', e.target.value)}
+                        placeholder="Opcional"
+                        inputMode="numeric"
+                        pattern="[0-9]+:[0-5][0-9]:[0-5][0-9]"
+                      />
+                    </label>
+                  </div>
+                ))}
+                {podiumMessage && <p className="podium-message" role="status">{podiumMessage}</p>}
+                <button className="btn-primary" type="submit" disabled={!podiumMarathonId || podiumSaving}>
+                  {podiumSaving ? 'Guardando…' : 'Guardar podio'}
+                </button>
+              </form>
             )}
           </div>
         )}
@@ -566,12 +735,12 @@ export default function AdminDashboard({ sesion }) {
         )}
       </div>
 
-      {/* MODAL MARATÓN */}
+      {/* MODAL CARRERA */}
       {showMarathonModal && (
         <div className="modal-overlay" onClick={() => setShowMarathonModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{editingMarathon ? ' Editar' : 'Nueva'} Maratón</h2>
+              <h2>{editingMarathon ? ' Editar' : 'Nueva'} Carrera</h2>
               <button className="modal-close" onClick={() => setShowMarathonModal(false)}>×</button>
             </div>
             <form onSubmit={handleSaveMarathon}>
@@ -632,7 +801,7 @@ export default function AdminDashboard({ sesion }) {
               <div>
                 <dl className="payment-review-data">
                   <dt>Monto</dt><dd><strong>{(selectedPayment.amountCents / 100).toFixed(2)} Bs</strong></dd>
-                  <dt>Maratón</dt><dd>{selectedPayment.marathon}</dd>
+                  <dt>Carrera</dt><dd>{selectedPayment.marathon}</dd>
                   <dt>CI</dt><dd>{selectedPayment.runnerCi || '—'}</dd>
                   <dt>Celular</dt><dd>{selectedPayment.runnerPhone || '—'}</dd>
                   <dt>Email</dt><dd>{selectedPayment.runnerEmail || '—'}</dd>
