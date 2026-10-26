@@ -47,7 +47,7 @@ export default function Header({ sesion, onLogout, onSeccionChange }) {
           <img className="brand-icon" src="/logo.png" alt="CAM" />
           <div className="brand-text">
             <strong style={{ color: 'var(--purple)' }}>CAM</strong>
-            <span style={{ color: 'var(--dark)' }}>Maratón de la Mujer</span>
+            <span style={{ color: 'var(--dark)' }}>CAM RUN 2026</span>
           </div>
         </a>
 
@@ -65,10 +65,10 @@ export default function Header({ sesion, onLogout, onSeccionChange }) {
                 <polyline points="9 22 9 12 15 12 15 22"></polyline>
               </svg>
             </a>
-            <a href="#nosotras" onClick={(e) => handleNavClick(e, 'nosotras')}>Nuestra Labor</a>
-            <a href="#carreras" onClick={(e) => handleNavClick(e, 'carreras')}>Modalidades</a>
-            <a href="#recursos" onClick={(e) => handleNavClick(e, 'recursos')}>Recursos</a>
-            <a href="#contacto" onClick={(e) => handleNavClick(e, 'contacto')}>Contacto</a>
+            <a href="#distancias" onClick={(e) => handleNavClick(e, 'distancias')}>Distancias</a>
+            <a href="#recorrido" onClick={(e) => handleNavClick(e, 'recorrido')}>Recorrido</a>
+            <a href="#precios" onClick={(e) => handleNavClick(e, 'precios')}>Precios</a>
+            <a href="#inscripcion" onClick={(e) => handleNavClick(e, 'inscripcion')}>Inscripción</a>
           </nav>
         )}
 

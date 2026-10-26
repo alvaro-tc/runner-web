@@ -5,13 +5,7 @@ import Register from './Register'
 import AdminDashboard from './AdminDashboard'
 import RunnerDashboard from './RunnerDashboard'
 import { esStaff } from './roles'
-import Hero from './components/Hero'
-import AboutUs from './components/AboutUs'
-import Races from './components/Races'
-import Testimonials from './components/Testimonials'
-import Resources from './components/Resources'
-import Contact from './components/Contact'
-import Footer from './components/Footer'
+import Landing from './Landing'
 
 function leerSesionGuardada() {
   try {
@@ -76,13 +70,7 @@ export default function App() {
 
       return (
         <main>
-          <Hero onAcceso={irAcceso} />
-          <AboutUs />
-          <Races onAcceso={irAcceso} />
-          <Testimonials />
-          <Resources />
-          <Contact />
-          <Footer onAcceso={irAcceso} />
+          <Landing onAcceso={irAcceso} onRegistro={() => manejarNavegacion('registro')} />
         </main>
       )
     }
