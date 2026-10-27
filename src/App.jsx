@@ -5,7 +5,7 @@ import Register from './Register'
 import AdminDashboard from './AdminDashboard'
 import RunnerDashboard from './RunnerDashboard'
 import { esStaff } from './roles'
-import Landing from './Landing'
+import Landing, { PasosInscripcion } from './Landing'
 
 function leerSesionGuardada() {
   try {
@@ -20,6 +20,7 @@ export default function App() {
   const [sesion, setSesionState] = useState(leerSesionGuardada)
   const [seccion, setSeccion] = useState('inicio')
   const [vista, setVista] = useState('login')
+  const [verPasos, setVerPasos] = useState(false)
 
   function setSesion(nuevaSesion) {
     setSesionState(nuevaSesion)
@@ -35,19 +36,15 @@ export default function App() {
     setVista('login')
   }
 
-  function irAcceso() {
-    setSeccion('auth')
-    setVista('login')
-  }
-
   // Intercepta las órdenes del Header para enrutar correctamente
   function manejarNavegacion(nuevaSeccion) {
-    if (nuevaSeccion === 'acceso') {
+    setVerPasos(false)
+    if (nuevaSeccion === 'inscribirme') {
+      setVerPasos(true)
+    } else if (nuevaSeccion === 'acceso' || nuevaSeccion === 'registro') {
       setSeccion('auth')
-      setVista('login')
-    } else if (nuevaSeccion === 'registro') {
-      setSeccion('auth')
-      setVista('register')
+      setVista(nuevaSeccion === 'acceso' ? 'login' : 'register')
+      window.scrollTo(0, 0)
     } else {
       setSeccion(nuevaSeccion)
     }
@@ -70,7 +67,7 @@ export default function App() {
 
       return (
         <main>
-          <Landing onAcceso={irAcceso} onRegistro={() => manejarNavegacion('registro')} />
+          <Landing onInscribirme={() => setVerPasos(true)} />
         </main>
       )
     }
@@ -91,6 +88,14 @@ export default function App() {
         onSeccionChange={manejarNavegacion}
       />
       {renderContent()}
+      {!sesion && (
+        <PasosInscripcion
+          abierto={verPasos}
+          onCerrar={() => setVerPasos(false)}
+          onRegistro={() => manejarNavegacion('registro')}
+          onAcceso={() => manejarNavegacion('acceso')}
+        />
+      )}
     </div>
   )
 }

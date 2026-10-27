@@ -19,9 +19,14 @@ async function fetchApi(path, options = {}) {
   }
   if (token) headers['Authorization'] = `Bearer ${token}`
 
-  const res = await fetch(`${BASE}${path}`, { ...fetchOptions, headers })
+  let res
+  try {
+    res = await fetch(`${BASE}${path}`, { ...fetchOptions, headers })
+  } catch {
+    throw new Error('No pudimos conectar con el servidor. Revisá tu conexión e intentá de nuevo.')
+  }
   if (res.status === 204) return null
-  const json = await res.json()
+  const json = await res.json().catch(() => null)
   if (!res.ok) throw new Error(json?.error?.message || `Error ${res.status}`)
   return withMeta ? json : json.data
 }

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { register } from './api'
+import { AuthAside } from './Login'
 
 export default function Register({ onRegister, onGoToLogin }) {
   const [name, setName] = useState('')
@@ -21,12 +22,8 @@ export default function Register({ onRegister, onGoToLogin }) {
   }
 
   return (
-    <div className="auth-page" style={{ paddingTop: '80px', paddingBottom: '3rem' }}>
-      <div className="auth-deco">
-        <div className="auth-circle auth-circle-1" />
-        <div className="auth-circle auth-circle-2" />
-        <div className="auth-circle auth-circle-3" />
-      </div>
+    <div className="auth-page">
+      <AuthAside />
       <div className="auth-card">
         
         <div className="auth-card-header">

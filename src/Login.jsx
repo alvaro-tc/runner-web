@@ -22,11 +22,7 @@ export default function Login({ onLogin, onGoToRegister }) {
 
   return (
     <div className="auth-page">
-      <div className="auth-deco">
-        <div className="auth-circle auth-circle-1" />
-        <div className="auth-circle auth-circle-2" />
-        <div className="auth-circle auth-circle-3" />
-      </div>
+      <AuthAside />
       
       <div className="auth-card">
         <div className="auth-card-header">
@@ -76,5 +72,22 @@ export default function Login({ onLogin, onGoToRegister }) {
         </p>
       </div>
     </div>
+  )
+}
+/// Fondo y columna de bienvenida compartidos por login y registro
+export function AuthAside() {
+  return (
+    <>
+      <div className="auth-bg" aria-hidden="true"><img src="/landing/lapaz-banda.jpg" alt="" /></div>
+      <div className="auth-aside">
+        <h1>Alistá los tenis.<span>Corremos por una buena causa.</span></h1>
+        <ul>
+          <li><b>Fecha</b>Domingo 22 de noviembre, 08:00</li>
+          <li><b>Partida</b>Av. Montenegro, San Miguel</li>
+          <li><b>Distancias</b>5 km y 1.5 km</li>
+          <li><b>Destino</b>100% al Centro de Apoyo a la Mujer</li>
+        </ul>
+      </div>
+    </>
   )
 }

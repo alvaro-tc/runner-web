@@ -424,7 +424,7 @@ export default function AdminDashboard({ sesion }) {
       <div className="dashboard-header">
         <div className="container">
           <h1>{esAdmin ? 'Panel Administrativo' : 'Panel de Organizador'}</h1>
-          <p>Centro de Apoyo a la Mujer · Carrera de la Mujer</p>
+          <p>CAM RUN 2026, domingo 22 de noviembre en San Miguel</p>
         </div>
       </div>
 

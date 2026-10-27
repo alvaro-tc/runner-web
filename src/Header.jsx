@@ -1,107 +1,85 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { esStaff, etiquetaRol } from './roles'
 
-export default function Header({ sesion, onLogout, onSeccionChange }) {
+const LINKS = [
+  ['el-dia', 'La carrera'],
+  ['causa', 'La causa'],
+  ['pasadas', 'Eventos'],
+  ['preguntas', 'Preguntas'],
+]
+
+export default function Header({ sesion, onLogout, seccion, onSeccionChange }) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
 
-  function irInicio() {
-    onSeccionChange?.('inicio')
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 40)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  // Sobre el hero la barra es translúcida; al bajar, en login y en paneles va blanca.
+  const enLanding = !sesion && seccion === 'inicio'
+  const clara = !enLanding || scrolled || menuOpen
+
+  function ir(nuevaSeccion) {
+    onSeccionChange?.(nuevaSeccion)
     setMenuOpen(false)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  function irAcceso() {
-    onSeccionChange?.('acceso')
-    setMenuOpen(false)
-  }
-
-  function irRegistro() {
-    onSeccionChange?.('registro')
-    setMenuOpen(false)
-  }
-
-  // Esta función hace la magia de devolverte al inicio y scrollear a la sección correcta
+  // Vuelve a la portada (si estabas en login) y baja a la sección pedida
   function handleNavClick(e, id) {
     e.preventDefault()
-    
-    // 1. Le decimos a App.jsx que cargue la vista principal ('inicio')
-    onSeccionChange?.('inicio')
-    setMenuOpen(false)
-    
-    // 2. Esperamos un instante a que React dibuje la página y hacemos el scroll
+    ir('inicio')
     setTimeout(() => {
-      const element = document.getElementById(id)
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth' })
-      }
-    }, 100) // 100ms es suficiente para que React cargue los componentes
+      if (id === 'top') window.scrollTo({ top: 0, behavior: 'smooth' })
+      else document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
+    }, 100)
   }
 
   return (
-    // Aplicamos el color de fondo personalizado que pediste
-    <header className="topbar topbar-scrolled" id="top" style={{ backgroundColor: '#FAD047' }}>
-      <div className="topbar-inner container">
-        
-        <a className="brand" href="#top" onClick={e => { e.preventDefault(); irInicio() }}>
-          {/* Quitamos el filtro blanco para que el logo se vea original sobre el fondo crema */}
-          <img className="brand-icon" src="/logo.png" alt="CAM" />
-          <div className="brand-text">
-            <strong style={{ color: 'var(--purple)' }}>CAM</strong>
-            <span style={{ color: 'var(--dark)' }}>CAM RUN 2026</span>
-          </div>
+    <header className={`lp-nav${clara ? ' clara' : ''}`}>
+      <div className="lp-nav-bar">
+        <a className="lp-brand" href="/" onClick={e => handleNavClick(e, 'top')}>
+          <img src="/logo.png" alt="" />CAM RUN
         </a>
 
         {!sesion && (
-          <nav className={`topbar-nav${menuOpen ? ' nav-open' : ''}`}>
-            {/* La casita ahora es parte del menú, alineada y con el mismo estilo */}
-            <a 
-              href="#top" 
-              onClick={(e) => handleNavClick(e, 'top')}
-              title="Volver al inicio"
-              style={{ display: 'flex', alignItems: 'center', padding: '0.45rem 0.5rem' }}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                <polyline points="9 22 9 12 15 12 15 22"></polyline>
-              </svg>
-            </a>
-            <a href="#distancias" onClick={(e) => handleNavClick(e, 'distancias')}>Distancias</a>
-            <a href="#recorrido" onClick={(e) => handleNavClick(e, 'recorrido')}>Recorrido</a>
-            <a href="#precios" onClick={(e) => handleNavClick(e, 'precios')}>Precios</a>
-            <a href="#inscripcion" onClick={(e) => handleNavClick(e, 'inscripcion')}>Inscripción</a>
+          <nav className={`lp-links${menuOpen ? ' open' : ''}`} aria-label="Secciones">
+            {LINKS.map(([id, texto]) => (
+              <a key={id} href={`#${id}`} onClick={e => handleNavClick(e, id)}>{texto}</a>
+            ))}
+            <button className="lp-login lp-login-menu" onClick={() => ir('acceso')}>Iniciar sesión</button>
           </nav>
         )}
 
-        <div className="topbar-actions">
+        <div className="lp-actions">
           {sesion ? (
             <>
               <span className={`role-badge ${esStaff(sesion.user.role) ? 'badge-admin' : 'badge-runner'}`}>
                 {etiquetaRol(sesion.user.role)}
               </span>
-              <span className="user-name" style={{ color: 'var(--dark)' }}>{sesion.user.name}</span>
-              <button className="btn-ghost-sm" onClick={onLogout} style={{ color: 'var(--dark)', borderColor: 'var(--gray)' }}>Salir</button>
+              <span className="lp-user">{sesion.user.name}</span>
+              <button className="lp-login lp-salir" onClick={onLogout}>Salir</button>
             </>
           ) : (
             <>
-              {/* Botones vuelven a usar los estilos base para que contrasten bien */}
-              <button className="btn-outline-sm" onClick={irAcceso}>Iniciar sesión</button>
-              <button className="btn-primary-sm" onClick={irRegistro}>Registrarse</button>
+              <button className="lp-login" onClick={() => ir('acceso')}>Ingresar</button>
+              <button className="btn btn-main" onClick={() => ir('inscribirme')}>Inscribirme</button>
             </>
           )}
+          {!sesion && (
+            <button
+              className={`lp-burger${menuOpen ? ' open' : ''}`}
+              onClick={() => setMenuOpen(o => !o)}
+              aria-label="Menú"
+              aria-expanded={menuOpen}
+            >
+              <span /><span /><span />
+            </button>
+          )}
         </div>
-
-        {!sesion && (
-          <button
-            className={`hamburger${menuOpen ? ' open' : ''}`}
-            onClick={() => setMenuOpen(o => !o)}
-            aria-label="Menú"
-          >
-            {/* Rayas oscuras para el menú de celular */}
-            <span style={{ backgroundColor: 'var(--dark)' }} />
-            <span style={{ backgroundColor: 'var(--dark)' }} />
-            <span style={{ backgroundColor: 'var(--dark)' }} />
-          </button>
-        )}
       </div>
     </header>
   )

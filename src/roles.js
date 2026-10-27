@@ -3,4 +3,4 @@
 export const esStaff = role => role === 'admin' || role === 'organizer'
 
 export const etiquetaRol = role =>
-  role === 'admin' ? '⚙️ Admin' : role === 'organizer' ? '📋 Organizador' : '🏃‍♀️ Corredora'
+  role === 'admin' ? 'Admin' : role === 'organizer' ? 'Organizador' : 'Corredora'
