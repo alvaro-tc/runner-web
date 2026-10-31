@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { APK_URL } from './api'
+import { QRCodeSVG } from 'qrcode.react'
 import './landing.css'
 
 const LARGADA = new Date('2026-11-22T08:00:00-04:00')
 const WHATSAPP = 'https://wa.me/59170868610'
 const WHATSAPP_INFO = `${WHATSAPP}?text=${encodeURIComponent('Hola, quiero info de CAM RUN 5K')}`
 const FACEBOOK = 'https://www.facebook.com/CAM.BO.LP'
-// TODO: enlaces reales de Instagram y App Store cuando existan.
+const PLAY_URL = 'https://play.google.com/store/apps/details?id=com.tumype.camrun&pcampaignid=web_share'
+const APPSTORE_URL = 'https://apps.apple.com/bo/app/camrun/id6818321729'
+// TODO: enlace real de Instagram cuando exista.
 const INSTAGRAM = '#'
 
 const LEMAS = ['¡Alistá los tenis, corremos por una buena causa!', 'Guardá la fecha', 'Corré por la vida', '22 de noviembre en San Miguel', 'Cada paso ayuda a reconstruir vidas']
@@ -65,6 +67,36 @@ function MiniDias() {
   return <span>{llego ? '¡Hoy!' : `${dias} días`}</span>
 }
 
+const GooglePlayIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#00D9FF" d="M3.6 2.3 13.4 12l-9.8 9.7A1.5 1.5 0 0 1 3 20.5v-17a1.5 1.5 0 0 1 .6-1.2Z" /><path fill="#00F076" d="m16.8 8.6-3.4 3.4-9.8-9.7c.4-.3 1-.3 1.5 0l11.7 6.3Z" /><path fill="#FF3A5E" d="M16.8 15.4 5.1 21.7c-.5.3-1.1.3-1.5 0l9.8-9.7 3.4 3.4Z" /><path fill="#FFC72C" d="m20.4 13.3-3.6 2.1-3.4-3.4 3.4-3.4 3.6 2a1.5 1.5 0 0 1 0 2.7Z" /></svg>
+)
+const AppleIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16.4 12.6c0-2.4 2-3.6 2.1-3.7a4.5 4.5 0 0 0-3.5-1.9c-1.5-.2-2.9.9-3.7.9s-1.9-.9-3.2-.8A4.7 4.7 0 0 0 4.2 9.5c-1.7 3-.4 7.3 1.2 9.7.8 1.2 1.8 2.5 3 2.4s1.7-.8 3.1-.8 1.9.8 3.2.8 2.1-1.2 2.9-2.4a10 10 0 0 0 1.3-2.7 4.2 4.2 0 0 1-2.5-3.9ZM14 5.4A4.3 4.3 0 0 0 15 2.3a4.4 4.4 0 0 0-2.9 1.5 4.1 4.1 0 0 0-1 3 3.6 3.6 0 0 0 2.9-1.4Z" /></svg>
+)
+
+// Insignia de tienda al estilo de los badges oficiales (icono + "Disponible en / Nombre")
+function StoreBadge({ href, icon, eyebrow, name }) {
+  return (
+    <a className="store-badge" href={href} target="_blank" rel="noopener noreferrer">
+      {icon}
+      <span><small>{eyebrow}</small><strong>{name}</strong></span>
+    </a>
+  )
+}
+
+// Aviso del hero: la app ya está disponible para descargar
+function HeroApps() {
+  return (
+    <div className="hero-apps">
+      <p>Llevá CAM RUN en el celular</p>
+      <div className="store-badges">
+        <StoreBadge href={PLAY_URL} icon={<GooglePlayIcon />} eyebrow="Disponible en" name="Google Play" />
+        <StoreBadge href={APPSTORE_URL} icon={<AppleIcon />} eyebrow="Descárgala en" name="App Store" />
+      </div>
+    </div>
+  )
+}
+
 // Pasos de inscripción: se muestran al tocar cualquier "Inscribirme"
 export function PasosInscripcion({ abierto, onCerrar, onRegistro, onAcceso }) {
   const ref = useRef(null)
@@ -114,6 +146,7 @@ export default function Landing({ onInscribirme }) {
               <button className="btn btn-main" onClick={onInscribirme}>Inscribirme</button>
               <a className="btn btn-line" href="#causa">Conocer la causa</a>
             </div>
+            <HeroApps />
             <ul className="dist-pills">
               <li><b>5 km</b>Social Run</li>
               <li><b>1.5 km</b>Chicos y familias</li>
@@ -246,18 +279,19 @@ export default function Landing({ onInscribirme }) {
               <li><b>Tus resultados</b>Mirá tu tiempo cuando cruces la meta.</li>
             </ul>
             <div className="stores">
-              <a className="store" href={APK_URL}>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#8B5CF6" d="M3.6 2.3 13.4 12l-9.8 9.7A1.5 1.5 0 0 1 3 20.5v-17a1.5 1.5 0 0 1 .6-1.2Z" /><path fill="#C4B5FD" d="m16.8 8.6-3.4 3.4-9.8-9.7c.4-.3 1-.3 1.5 0l11.7 6.3Z" /><path fill="#4C1D95" d="M16.8 15.4 5.1 21.7c-.5.3-1.1.3-1.5 0l9.8-9.7 3.4 3.4Z" /><path fill="#2A2140" d="m20.4 13.3-3.6 2.1-3.4-3.4 3.4-3.4 3.6 2a1.5 1.5 0 0 1 0 2.7Z" /></svg>
-                <span>Descargar para<strong>Android</strong></span>
-              </a>
-              <span className="store store-soon">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16.4 12.6c0-2.4 2-3.6 2.1-3.7a4.5 4.5 0 0 0-3.5-1.9c-1.5-.2-2.9.9-3.7.9s-1.9-.9-3.2-.8A4.7 4.7 0 0 0 4.2 9.5c-1.7 3-.4 7.3 1.2 9.7.8 1.2 1.8 2.5 3 2.4s1.7-.8 3.1-.8 1.9.8 3.2.8 2.1-1.2 2.9-2.4a10 10 0 0 0 1.3-2.7 4.2 4.2 0 0 1-2.5-3.9ZM14 5.4A4.3 4.3 0 0 0 15 2.3a4.4 4.4 0 0 0-2.9 1.5 4.1 4.1 0 0 0-1 3 3.6 3.6 0 0 0 2.9-1.4Z" /></svg>
-                <span>Muy pronto en<strong>App Store</strong></span>
-              </span>
+              <StoreBadge href={PLAY_URL} icon={<GooglePlayIcon />} eyebrow="Disponible en" name="Google Play" />
+              <StoreBadge href={APPSTORE_URL} icon={<AppleIcon />} eyebrow="Descárgala en" name="App Store" />
             </div>
-            <div className="qr">
-              <img src="/app-qr.svg" alt="Código QR para descargar la app de Android" width="88" height="88" />
-              <p>Escaneá el código con tu celular Android para descargar la app.</p>
+            <div className="qr-group">
+              <a className="qr-card" href={PLAY_URL} target="_blank" rel="noopener noreferrer">
+                <QRCodeSVG value={PLAY_URL} size={84} bgColor="#ffffff" fgColor="#1A1130" />
+                <span>Android</span>
+              </a>
+              <a className="qr-card" href={APPSTORE_URL} target="_blank" rel="noopener noreferrer">
+                <QRCodeSVG value={APPSTORE_URL} size={84} bgColor="#ffffff" fgColor="#1A1130" />
+                <span>iPhone</span>
+              </a>
+              <p>Escaneá con tu celular para ir directo a la tienda.</p>
             </div>
           </div>
 
@@ -341,7 +375,8 @@ export default function Landing({ onInscribirme }) {
             <div>
               <h3>Información</h3>
               <ul>
-                <li><a href={APK_URL}>App para Android</a></li>
+                <li><a href={PLAY_URL} target="_blank" rel="noopener noreferrer">App para Android</a></li>
+                <li><a href={APPSTORE_URL} target="_blank" rel="noopener noreferrer">App para iPhone</a></li>
                 <li><a href="/terminos">Términos y condiciones</a></li>
                 <li><a href="/privacidad">Política de privacidad</a></li>
                 <li><a href="/eliminar-cuenta">Eliminar tu cuenta</a></li>

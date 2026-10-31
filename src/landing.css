@@ -175,12 +175,21 @@
 .feats li{font-size:.97rem;color:rgba(255,255,255,.72)}
 .feats b{display:block;color:#fff;font-weight:600;font-size:1.03rem}
 .stores{display:flex;flex-wrap:wrap;gap:12px}
-.store{display:flex;align-items:center;gap:12px;background:#fff;color:var(--ink);text-decoration:none;border-radius:16px;padding:10px 20px 10px 16px;min-width:190px;transition:transform .15s}
-.store:hover{transform:translateY(-2px)}
-.store svg{width:28px;height:28px}
-.store span{font-size:.75rem;line-height:1.2;color:var(--muted)}
-.store strong{display:block;font-size:1.1rem;color:var(--ink);font-weight:700}
+.store-badge{display:flex;align-items:center;gap:12px;background:#fff;color:var(--ink);text-decoration:none;border-radius:16px;padding:10px 20px 10px 16px;min-width:190px;transition:transform .15s}
+.store-badge:hover{transform:translateY(-2px)}
+.store-badge svg{width:28px;height:28px;flex:none}
+.store-badge small{display:block;font-size:.75rem;line-height:1.2;color:var(--muted)}
+.store-badge strong{display:block;font-size:1.1rem;color:var(--ink);font-weight:700}
 .note{font-size:.85rem;color:rgba(255,255,255,.55);margin-top:16px}
+
+.qr-group{display:flex;align-items:center;gap:16px;margin-top:24px;flex-wrap:wrap}
+.qr-card{display:flex;flex-direction:column;align-items:center;gap:8px;text-decoration:none;color:rgba(255,255,255,.75);font-size:.8rem;font-weight:600}
+.qr-card svg{background:#fff;padding:6px;border-radius:12px}
+.qr-group p{font-size:.85rem;color:rgba(255,255,255,.6);max-width:20ch;margin-left:4px}
+
+.hero-apps{margin:28px 0}
+.hero-apps>p{font-size:1rem;font-weight:700;color:#fff;margin-bottom:12px}
+.hero-apps .store-badges{display:flex;flex-wrap:wrap;gap:12px}
 
 .phones{position:relative;height:620px}
 .phone{position:absolute;width:280px;height:580px;border-radius:44px;background:#0F0A1C;padding:10px;box-shadow:0 40px 80px rgba(10,4,30,.45)}
@@ -267,11 +276,6 @@
 :where(.lp) [id]{scroll-margin-top:64px}
 
 .lp-inline{background:none;border:0;padding:0;font:inherit;font-weight:600;color:var(--violet);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
-.store-soon{opacity:.6;cursor:default}
-.store-soon:hover{transform:none}
-.qr{display:flex;align-items:center;gap:16px;margin-top:24px;max-width:38ch}
-.qr img{background:#fff;padding:6px;border-radius:12px;flex:none}
-.qr p{font-size:.9rem;color:rgba(255,255,255,.7)}
 
 /* hero: skyline, píldoras, tarjetas y cinta de lemas */
 .hero-sky{position:absolute;left:0;right:0;bottom:0;width:100%;height:55%;object-fit:cover;opacity:.28;mix-blend-mode:luminosity;-webkit-mask-image:linear-gradient(transparent,#000 70%);mask-image:linear-gradient(transparent,#000 70%);pointer-events:none}

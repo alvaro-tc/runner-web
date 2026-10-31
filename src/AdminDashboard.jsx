@@ -9,6 +9,10 @@ import {
   saveManualPodium,
   getAdminUsers,
   uploadMarathonQR,
+  uploadMarathonImage,
+  createRehearsal,
+  resetMarathonLive,
+  getAdminMarathon,
   createMarathon,
   updateMarathon,
   deleteMarathon,
@@ -23,6 +27,14 @@ import {
   uploadApk,
   APK_URL,
 } from './api'
+
+// Las imagenes de una maraton: el campo del detalle y el tramo del endpoint.
+// La app elige sola cual pinta segun la forma del hueco.
+const IMAGENES_MARATON = [
+  { campo: 'logoVerticalUrl', slot: 'logo/vertical', titulo: 'Logo vertical', ayuda: 'El afiche grande del inicio de la app. PNG con fondo transparente.', ratio: '4 / 5' },
+  { campo: 'logoHorizontalUrl', slot: 'logo/horizontal', titulo: 'Logo horizontal', ayuda: 'Tarjetas y cabeceras. PNG con fondo transparente.', ratio: '16 / 10' },
+  { campo: 'coverUrl', slot: 'cover', titulo: 'Afiche / foto', ayuda: 'Se usa si falta algun logo. Nunca se recorta.', ratio: '16 / 9' },
+]
 
 const PAGO_LABEL = {
   pending: 'Pendiente',
@@ -105,6 +117,8 @@ export default function AdminDashboard({ sesion }) {
   })
 
   const [qrMarathon, setQrMarathon] = useState(null)
+  const [imgMarathon, setImgMarathon] = useState(null)
+  const [imgSubiendo, setImgSubiendo] = useState('')
   const [qrFile, setQrFile] = useState(null)
   const [qrAmount, setQrAmount] = useState('')
   const [qrUploading, setQrUploading] = useState(false)
@@ -367,6 +381,27 @@ export default function AdminDashboard({ sesion }) {
     catch (err) { alert('Error: ' + err.message) }
   }
 
+  async function handleCreateRehearsal(m) {
+    const texto = window.prompt(
+      `Ensayo de "${m.name}"\n\nSe crea una copia privada con las cuentas que pongas como inscritos de prueba. ` +
+      'La carrera real y sus inscritos no se tocan.\n\nEmails de las cuentas de prueba (separados por coma):'
+    )
+    if (!texto) return
+    const emails = texto.split(/[\s,;]+/).filter(e => e.includes('@'))
+    if (emails.length === 0) { alert('Pon al menos un email'); return }
+    try { await createRehearsal(sesion.accessToken, m.id, emails); alert('Ensayo creado. Prepáralo y lárgalo desde el panel en vivo de la app.'); fetchMarathons() }
+    catch (err) { alert('Error: ' + err.message) }
+  }
+
+  async function handleResetLive(m) {
+    const aviso = m.rehearsalOfId
+      ? 'Vuelve a quedar sin preparar ni largar y se borra lo que corrieron los inscritos de prueba.'
+      : 'Vuelve a quedar sin preparar ni largar y los móviles de sus inscritos se liberan. Lo que ya corrieron no se borra.'
+    if (!window.confirm(`¿Reiniciar "${m.name}"?\n\n${aviso}`)) return
+    try { await resetMarathonLive(sesion.accessToken, m.id); alert('Carrera reiniciada'); fetchMarathons() }
+    catch (err) { alert('Error: ' + err.message) }
+  }
+
   async function handleTogglePublish(m) {
     try {
       if (m.published) { await unpublishMarathon(sesion.accessToken, m.id); alert('Despublicada') }
@@ -378,6 +413,30 @@ export default function AdminDashboard({ sesion }) {
   async function handleExportCsv(m) {
     try { await downloadRegistrantsCsv(sesion.accessToken, m) }
     catch (err) { alert('Error: ' + err.message) }
+  }
+
+  // Se abre con el detalle: la lista no trae las URLs de las imagenes.
+  async function openImagesModal(m) {
+    try { setImgMarathon(await getAdminMarathon(sesion.accessToken, m.id)) }
+    catch (err) { alert('Error: ' + err.message) }
+  }
+
+  // Cada imagen se sube al elegirla: lo que se ve despues es lo que guardo el
+  // servidor, no el archivo local.
+  async function handleImageUpload(img, file) {
+    if (!file) return
+    setImgSubiendo(img.campo)
+    try { setImgMarathon(await uploadMarathonImage(sesion.accessToken, imgMarathon.id, img.slot, file)) }
+    catch (err) { alert('Error: ' + err.message) }
+    finally { setImgSubiendo('') }
+  }
+
+  async function handleImageRemove(img) {
+    if (!window.confirm(`¿Quitar ${img.titulo.toLowerCase()}?`)) return
+    setImgSubiendo(img.campo)
+    try { setImgMarathon(await updateMarathon(sesion.accessToken, imgMarathon.id, { [img.campo]: null })) }
+    catch (err) { alert('Error: ' + err.message) }
+    finally { setImgSubiendo('') }
   }
 
   function openQrModal(m) {
@@ -581,7 +640,7 @@ export default function AdminDashboard({ sesion }) {
                   <tbody>
                     {marathonsFiltradas.map(m => (
                       <tr key={m.id}>
-                        <td><div className="cell-name">{m.name}</div><div className="cell-sub">{m.slug}</div></td>
+                        <td><div className="cell-name">{m.name}{m.rehearsalOfId && <span className="status-badge badge-draft" style={{ marginLeft: 8 }}>Ensayo</span>}</div><div className="cell-sub">{m.slug}</div></td>
                         <td>{m.city}</td>
                         <td>{new Date(m.startsAt).toLocaleDateString()}</td>
                         <td>{(m.priceCents / 100).toFixed(2)} Bs</td>
@@ -589,9 +648,12 @@ export default function AdminDashboard({ sesion }) {
                         <td><span className={`status-badge ${m.published ? 'badge-confirmed' : 'badge-draft'}`}>{m.published ? 'Publicada' : 'Borrador'}</span></td>
                         <td className="actions-cell">
                           <button className="btn-outline-sm" onClick={() => openEditMarathonModal(m)}>Editar</button>
+                          <button className="btn-outline-sm" onClick={() => openImagesModal(m)}>Imágenes</button>
                           <button className="btn-outline-sm" onClick={() => openQrModal(m)}>QR</button>
                           <button className="btn-outline-sm" onClick={() => handleExportCsv(m)}>Exportar CSV</button>
-                          <button className="btn-outline-sm" onClick={() => handleTogglePublish(m)}>{m.published ? 'Ocultar' : 'Publicar'}</button>
+                          {!m.rehearsalOfId && <button className="btn-outline-sm" onClick={() => handleTogglePublish(m)}>{m.published ? 'Ocultar' : 'Publicar'}</button>}
+                          {!m.rehearsalOfId && <button className="btn-outline-sm" onClick={() => handleCreateRehearsal(m)}>Ensayo</button>}
+                          {(m.preparingAt || m.liveStartedAt || m.liveFinishedAt) && <button className="btn-outline-sm" onClick={() => handleResetLive(m)}>Reiniciar</button>}
                           <button className="btn-danger-sm" onClick={() => handleDeleteMarathon(m)}>Eliminar</button>
                         </td>
                       </tr>
@@ -758,6 +820,37 @@ export default function AdminDashboard({ sesion }) {
                 <button type="submit" className="btn-primary">{editingMarathon ? 'Guardar' : 'Crear'}</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL IMAGENES */}
+      {imgMarathon && (
+        <div className="modal-overlay" onClick={() => !imgSubiendo && setImgMarathon(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header"><h2>Imágenes - {imgMarathon.name}</h2><button className="modal-close" onClick={() => setImgMarathon(null)}>×</button></div>
+            <div className="modal-body">
+              {IMAGENES_MARATON.map(img => (
+                <div key={img.campo} style={{ marginBottom: 20 }}>
+                  <strong>{img.titulo}</strong>
+                  <p style={{ margin: '4px 0 8px', fontSize: 13, opacity: 0.7 }}>{img.ayuda}</p>
+                  <div style={{ aspectRatio: img.ratio, maxWidth: img.ratio === '4 / 5' ? 200 : 320, background: '#F4F2FF', border: '1px dashed #C4B5FD', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                    {imgSubiendo === img.campo
+                      ? <span>Subiendo...</span>
+                      : imgMarathon[img.campo]
+                        ? <img src={imgMarathon[img.campo]} alt={img.titulo} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                        : <span style={{ opacity: 0.6 }}>Sin imagen</span>}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
+                    <input type="file" accept="image/*" disabled={!!imgSubiendo} onChange={e => { handleImageUpload(img, e.target.files[0]); e.target.value = '' }} className="form-input" />
+                    {imgMarathon[img.campo] && <button className="btn-danger-sm" disabled={!!imgSubiendo} onClick={() => handleImageRemove(img)}>Quitar</button>}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="modal-footer">
+              <button className="btn-primary" onClick={() => setImgMarathon(null)} disabled={!!imgSubiendo}>Listo</button>
+            </div>
           </div>
         </div>
       )}

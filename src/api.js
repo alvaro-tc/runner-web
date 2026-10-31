@@ -227,6 +227,18 @@ export async function uploadMarathonQR(token, marathonId, file) {
   })
 }
 
+// Afiche y logos de la maraton. `slot` es 'cover', 'logo/vertical' o
+// 'logo/horizontal': cada uno tiene su endpoint y devuelve el detalle nuevo.
+export async function uploadMarathonImage(token, marathonId, slot, file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return fetchApi(`/admin/marathons/${marathonId}/${slot}`, {
+    method: 'POST',
+    body: formData,
+    token,
+  })
+}
+
 // APK de Android. La URL pública redirige siempre a la última versión subida.
 export const APK_URL = `${BASE}/config/app/apk`
 
@@ -238,6 +250,21 @@ export async function uploadApk(token, file) {
   const formData = new FormData()
   formData.append('file', file)
   return fetchApi('/config/app/apk', { method: 'POST', body: formData, token })
+}
+
+// Ensayo: copia privada de la maraton con las cuentas de `emails` como
+// inscritos de prueba. Se prepara, larga y reinicia sin tocar la real.
+export async function createRehearsal(token, marathonId, emails) {
+  return fetchApi(`/admin/marathons/${marathonId}/rehearsal`, {
+    method: 'POST',
+    body: JSON.stringify({ emails }),
+    token,
+  })
+}
+
+// Quita preparacion, largada y corte. En un ensayo borra tambien lo corrido.
+export async function resetMarathonLive(token, marathonId) {
+  return fetchApi(`/admin/marathons/${marathonId}/reset-live`, { method: 'POST', token })
 }
 
 export async function publishMarathon(token, marathonId) {
