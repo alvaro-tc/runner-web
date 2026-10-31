@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { register } from './api'
-import { AuthAside } from './Login'
+import { AuthAside, GoogleButton } from './Login'
 
 export default function Register({ onRegister, onGoToLogin }) {
   const [name, setName] = useState('')
@@ -85,6 +85,8 @@ export default function Register({ onRegister, onGoToLogin }) {
             {estado.cargando ? 'Creando cuenta...' : 'Crear cuenta'}
           </button>
         </form>
+
+        <GoogleButton onSesion={onRegister} />
         
         <p className="auth-switch">
           ¿Ya tienes cuenta?{' '}

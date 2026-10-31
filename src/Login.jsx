@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { login } from './api'
+import { useEffect, useRef, useState } from 'react'
+import { login, loginWithGoogle } from './api'
 
 export default function Login({ onLogin, onGoToRegister }) {
   // La API entra por email o por CI con un unico campo.
@@ -63,6 +63,8 @@ export default function Login({ onLogin, onGoToRegister }) {
             {estado.cargando ? 'Iniciando sesión...' : 'Iniciar sesión'}
           </button>
         </form>
+
+        <GoogleButton onSesion={onLogin} />
         
         <p className="auth-switch">
           ¿No tienes una cuenta?{' '}
@@ -88,6 +90,60 @@ export function AuthAside() {
           <li><b>Destino</b>100% al Centro de Apoyo a la Mujer</li>
         </ul>
       </div>
+    </>
+  )
+}
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
+let gsi
+
+// Script de Google Identity Services: se carga una sola vez aunque se pase de login a registro
+function loadGsi() {
+  return gsi ??= new Promise((resolve, reject) => {
+    const s = document.createElement('script')
+    s.src = 'https://accounts.google.com/gsi/client'
+    s.onload = resolve
+    s.onerror = () => { gsi = null; reject() }
+    document.head.append(s)
+  })
+}
+
+/// Boton "Continuar con Google", compartido por login y registro
+export function GoogleButton({ onSesion }) {
+  const ref = useRef(null)
+  const [error, setError] = useState()
+
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID) return
+    loadGsi().then(() => {
+      if (!ref.current) return
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: async ({ credential }) => {
+          setError()
+          try {
+            onSesion?.(await loginWithGoogle(credential))
+          } catch (err) {
+            setError(err.message)
+          }
+        },
+      })
+      window.google.accounts.id.renderButton(ref.current, {
+        theme: 'outline',
+        size: 'large',
+        text: 'continue_with',
+        locale: 'es',
+        width: Math.min(400, ref.current.offsetWidth),
+      })
+    }).catch(() => setError('No pudimos cargar el acceso con Google.'))
+  }, [])
+
+  if (!GOOGLE_CLIENT_ID) return null
+  return (
+    <>
+      <p className="auth-divider">o</p>
+      <div ref={ref} className="auth-google" />
+      {error && <p className="auth-error">{error}</p>}
     </>
   )
 }

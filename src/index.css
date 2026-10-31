@@ -72,6 +72,9 @@ button{cursor:pointer;font-family:inherit;border:none;background:none}
 .auth-submit:disabled{opacity:.6;cursor:wait;transform:none}
 .auth-hint{font-size:.8rem;color:var(--gray);margin-top:-.5rem}
 .auth-error{background:#FFE4E6;color:#BE123C;border-radius:var(--radius-sm);padding:.7rem 1rem;font-size:.88rem;font-weight:500}
+.auth-divider{display:flex;align-items:center;gap:.75rem;color:var(--gray);font-size:.85rem}
+.auth-divider::before,.auth-divider::after{content:"";flex:1;border-top:1px solid #E2E8F0}
+.auth-google{display:flex;justify-content:center;min-height:44px}
 .auth-switch{text-align:center;font-size:.9rem;color:var(--gray)}
 .auth-switch a{color:#6D28D9;font-weight:700}
 .auth-switch a:hover{text-decoration:underline}

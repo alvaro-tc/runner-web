@@ -46,6 +46,14 @@ export async function register(name, email, password, ci) {
   })
 }
 
+// Login y registro con Google son lo mismo: el backend crea la cuenta si el correo no tenia una
+export async function loginWithGoogle(idToken) {
+  return fetchApi('/auth/google', {
+    method: 'POST',
+    body: JSON.stringify({ idToken, deviceId: deviceId() }),
+  })
+}
+
 export async function getMe(token) {
   return fetchApi('/users/me', { token })
 }
