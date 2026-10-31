@@ -194,6 +194,27 @@ export async function downloadRegistrantsCsv(token, marathon) {
   URL.revokeObjectURL(url)
 }
 
+// Mismos filtros que getAdminPayments, pero sin paginar: el CSV llega como archivo
+export async function downloadPaymentsCsv(token, { q = '', status = '', marathonId = '' } = {}) {
+  const params = new URLSearchParams()
+  if (q) params.append('q', q)
+  if (status) params.append('status', status)
+  if (marathonId) params.append('marathonId', marathonId)
+  const res = await fetch(`${BASE}/admin/payments.csv?${params}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) {
+    const json = await res.json().catch(() => null)
+    throw new Error(json?.error?.message || `Error ${res.status}`)
+  }
+  const url = URL.createObjectURL(await res.blob())
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'cobros.csv'
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 export async function createMarathon(token, data) {
   return fetchApi('/admin/marathons', {
     method: 'POST',

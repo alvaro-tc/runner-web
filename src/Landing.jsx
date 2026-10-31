@@ -84,16 +84,14 @@ function StoreBadge({ href, icon, eyebrow, name }) {
   )
 }
 
-// Aviso del hero: la app ya está disponible para descargar
+// Línea discreta en el hero: no compite con el CTA de inscripción
 function HeroApps() {
   return (
-    <div className="hero-apps">
-      <p>Llevá CAM RUN en el celular</p>
-      <div className="store-badges">
-        <StoreBadge href={PLAY_URL} icon={<GooglePlayIcon />} eyebrow="Disponible en" name="Google Play" />
-        <StoreBadge href={APPSTORE_URL} icon={<AppleIcon />} eyebrow="Descárgala en" name="App Store" />
-      </div>
-    </div>
+    <p className="hero-apps">
+      También en
+      <a href={PLAY_URL} target="_blank" rel="noopener noreferrer"><GooglePlayIcon />Google Play</a>
+      <a href={APPSTORE_URL} target="_blank" rel="noopener noreferrer"><AppleIcon />App Store</a>
+    </p>
   )
 }
 
@@ -146,12 +144,12 @@ export default function Landing({ onInscribirme }) {
               <button className="btn btn-main" onClick={onInscribirme}>Inscribirme</button>
               <a className="btn btn-line" href="#causa">Conocer la causa</a>
             </div>
-            <HeroApps />
             <ul className="dist-pills">
               <li><b>5 km</b>Social Run</li>
               <li><b>1.5 km</b>Chicos y familias</li>
               <li><b>100%</b>al CAM</li>
             </ul>
+            <HeroApps />
           </div>
           <HeroFoto />
         </div>

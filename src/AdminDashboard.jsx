@@ -19,6 +19,7 @@ import {
   publishMarathon,
   unpublishMarathon,
   downloadRegistrantsCsv,
+  downloadPaymentsCsv,
   deleteUser,
   updateUser,
   approvePaymentProof,
@@ -415,6 +416,11 @@ export default function AdminDashboard({ sesion }) {
     catch (err) { alert('Error: ' + err.message) }
   }
 
+  async function handleExportPaymentsCsv() {
+    try { await downloadPaymentsCsv(sesion.accessToken, { q: paySearch, status: payStatus, marathonId: payMarathon }) }
+    catch (err) { alert('Error: ' + err.message) }
+  }
+
   // Se abre con el detalle: la lista no trae las URLs de las imagenes.
   async function openImagesModal(m) {
     try { setImgMarathon(await getAdminMarathon(sesion.accessToken, m.id)) }
@@ -582,6 +588,7 @@ export default function AdminDashboard({ sesion }) {
                   <option value="">Todas las carreras</option>
                   {marathons.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                 </select>
+                <button className="btn-outline-sm" onClick={handleExportPaymentsCsv}>Exportar a Excel</button>
               </div>
             </div>
             {loading ? null : payments.length === 0 ? <div className="dash-empty"><span></span><p>No hay cobros con estos filtros.</p></div> : (
@@ -650,7 +657,7 @@ export default function AdminDashboard({ sesion }) {
                           <button className="btn-outline-sm" onClick={() => openEditMarathonModal(m)}>Editar</button>
                           <button className="btn-outline-sm" onClick={() => openImagesModal(m)}>Imágenes</button>
                           <button className="btn-outline-sm" onClick={() => openQrModal(m)}>QR</button>
-                          <button className="btn-outline-sm" onClick={() => handleExportCsv(m)}>Exportar CSV</button>
+                          <button className="btn-outline-sm" onClick={() => handleExportCsv(m)}>Exportar a Excel</button>
                           {!m.rehearsalOfId && <button className="btn-outline-sm" onClick={() => handleTogglePublish(m)}>{m.published ? 'Ocultar' : 'Publicar'}</button>}
                           {!m.rehearsalOfId && <button className="btn-outline-sm" onClick={() => handleCreateRehearsal(m)}>Ensayo</button>}
                           {(m.preparingAt || m.liveStartedAt || m.liveFinishedAt) && <button className="btn-outline-sm" onClick={() => handleResetLive(m)}>Reiniciar</button>}
