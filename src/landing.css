@@ -187,10 +187,9 @@
 .qr-card svg{background:#fff;padding:6px;border-radius:12px}
 .qr-group p{font-size:.85rem;color:rgba(255,255,255,.6);max-width:20ch;margin-left:4px}
 
-.hero-apps{display:flex;align-items:center;flex-wrap:wrap;gap:14px;margin-top:24px;font-size:.85rem;color:rgba(255,255,255,.55)}
-.hero-apps a{display:inline-flex;align-items:center;gap:6px;color:rgba(255,255,255,.85);text-decoration:none;font-weight:600}
-.hero-apps a:hover{color:#fff}
-.hero-apps svg{width:17px;height:17px}
+.hero-apps{margin:28px 0}
+.hero-apps>p{font-size:1rem;font-weight:700;color:#fff;margin-bottom:12px}
+.hero-apps .store-badges{display:flex;flex-wrap:wrap;gap:12px}
 
 .phones{position:relative;height:620px}
 .phone{position:absolute;width:280px;height:580px;border-radius:44px;background:#0F0A1C;padding:10px;box-shadow:0 40px 80px rgba(10,4,30,.45)}
