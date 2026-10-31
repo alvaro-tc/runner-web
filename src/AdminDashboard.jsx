@@ -5,37 +5,12 @@ import {
   confirmTransfer,
   getAdminRegistrations,
   getAdminMarathons,
-  getManualPodium,
-  saveManualPodium,
   getAdminUsers,
-  uploadMarathonQR,
-  uploadMarathonImage,
-  createRehearsal,
-  resetMarathonLive,
-  getAdminMarathon,
-  createMarathon,
-  updateMarathon,
-  deleteMarathon,
-  publishMarathon,
-  unpublishMarathon,
-  downloadRegistrantsCsv,
   downloadPaymentsCsv,
-  deleteUser,
-  updateUser,
   approvePaymentProof,
   rejectPaymentProof,
-  getApkInfo,
-  uploadApk,
-  APK_URL,
 } from './api'
-
-// Las imagenes de una maraton: el campo del detalle y el tramo del endpoint.
-// La app elige sola cual pinta segun la forma del hueco.
-const IMAGENES_MARATON = [
-  { campo: 'logoVerticalUrl', slot: 'logo/vertical', titulo: 'Logo vertical', ayuda: 'El afiche grande del inicio de la app. PNG con fondo transparente.', ratio: '4 / 5' },
-  { campo: 'logoHorizontalUrl', slot: 'logo/horizontal', titulo: 'Logo horizontal', ayuda: 'Tarjetas y cabeceras. PNG con fondo transparente.', ratio: '16 / 10' },
-  { campo: 'coverUrl', slot: 'cover', titulo: 'Afiche / foto', ayuda: 'Se usa si falta algun logo. Nunca se recorta.', ratio: '16 / 9' },
-]
+import { ROL_LABEL } from './roles'
 
 const PAGO_LABEL = {
   pending: 'Pendiente',
@@ -58,25 +33,10 @@ const METODO_LABEL = {
   card: 'Tarjeta',
 }
 
-const ROL_LABEL = { runner: 'Corredora', organizer: 'Organizador', admin: 'Admin' }
-
 const PAGE_SIZE_PAGOS = 20
 
-function parseRaceTime(value) {
-  const match = /^(\d+):([0-5]\d):([0-5]\d)$/.exec(value.trim())
-  if (!match) return null
-  return Number(match[1]) * 3600 + Number(match[2]) * 60 + Number(match[3])
-}
-
-function formatRaceTime(seconds) {
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  const remainder = seconds % 60
-  return [hours, minutes, remainder].map(value => String(value).padStart(2, '0')).join(':')
-}
-
+// Panel del organizador: inscritas, validar cobros y cuentas. El admin usa PanelCarreras y el OSI PanelOsi.
 export default function AdminDashboard({ sesion }) {
-  const esAdmin = sesion.user.role === 'admin'
   const [activeTab, setActiveTab] = useState('inscripciones')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -93,75 +53,19 @@ export default function AdminDashboard({ sesion }) {
   const [registrations, setRegistrations] = useState([])
   const [marathons, setMarathons] = useState([])
   const [users, setUsers] = useState([])
-  const [podiumMarathonId, setPodiumMarathonId] = useState('')
-  const [podiumRows, setPodiumRows] = useState([
-    { bibNumber: '', finishTime: '', chipTime: '' },
-    { bibNumber: '', finishTime: '', chipTime: '' },
-    { bibNumber: '', finishTime: '', chipTime: '' },
-  ])
-  const [podiumLoading, setPodiumLoading] = useState(false)
-  const [podiumSaving, setPodiumSaving] = useState(false)
-  const [podiumMessage, setPodiumMessage] = useState('')
-
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
 
   const [searchTerm, setSearchTerm] = useState('')
   const [userSearch, setUserSearch] = useState('')
-  const [marathonSearch, setMarathonSearch] = useState('')
 
-  const [showMarathonModal, setShowMarathonModal] = useState(false)
-  const [editingMarathon, setEditingMarathon] = useState(null)
-  const [marathonForm, setMarathonForm] = useState({
-    name: '', city: '', startsAt: '', distanceMeters: '', capacity: '', priceCents: '', description: '',
-  })
-
-  const [qrMarathon, setQrMarathon] = useState(null)
-  const [imgMarathon, setImgMarathon] = useState(null)
-  const [imgSubiendo, setImgSubiendo] = useState('')
-  const [qrFile, setQrFile] = useState(null)
-  const [qrAmount, setQrAmount] = useState('')
-  const [qrUploading, setQrUploading] = useState(false)
   const [receiptData, setReceiptData] = useState(null)
-  const [apkInfo, setApkInfo] = useState(null)
-  const [apkFile, setApkFile] = useState(null)
-  const [apkUploading, setApkUploading] = useState(false)
 
   useEffect(() => {
     if (activeTab === 'inscripciones') fetchRegistrations()
-    if (activeTab === 'maratones') fetchMarathons()
-    if (activeTab === 'podio' && marathons.length === 0) fetchMarathons()
     if (activeTab === 'usuarios') fetchUsers()
-    if (activeTab === 'app') getApkInfo(sesion.accessToken).then(setApkInfo).catch(e => setError(e.message))
   }, [activeTab, page])
-
-  useEffect(() => {
-    if (activeTab !== 'podio' || marathons.length === 0) return
-    if (!podiumMarathonId || !marathons.some(m => m.id === podiumMarathonId)) {
-      setPodiumMarathonId(marathons[0].id)
-    }
-  }, [activeTab, marathons, podiumMarathonId])
-
-  useEffect(() => {
-    if (activeTab === 'podio' && podiumMarathonId) fetchPodium()
-  }, [activeTab, podiumMarathonId])
-
-  async function handleUploadApk(e) {
-    e.preventDefault()
-    if (!apkFile) return
-    setApkUploading(true)
-    setError(null)
-    try {
-      setApkInfo(await uploadApk(sesion.accessToken, apkFile))
-      setApkFile(null)
-      e.target.reset()
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setApkUploading(false)
-    }
-  }
 
   useEffect(() => {
     if (activeTab === 'pagos') fetchPayments()
@@ -206,75 +110,6 @@ export default function AdminDashboard({ sesion }) {
     }
     catch (err) { setError('Error: ' + err.message) }
     finally { setLoading(false) }
-  }
-
-  async function fetchMarathons() {
-    setLoading(true); setError(null)
-    try { setMarathons(await getAdminMarathons(sesion.accessToken)) }
-    catch (err) { setError('Error: ' + err.message) }
-    finally { setLoading(false) }
-  }
-
-  async function fetchPodium({ clearMessage = true } = {}) {
-    setPodiumLoading(true)
-    if (clearMessage) setPodiumMessage('')
-    try {
-      const registered = await getManualPodium(sesion.accessToken, podiumMarathonId)
-      setPodiumRows([1, 2, 3].map(rank => {
-        const result = registered.find(item => item.overallRank === rank)
-        return {
-          bibNumber: result?.bibNumber || '',
-          finishTime: result ? formatRaceTime(result.finishTimeSeconds) : '',
-          chipTime: result?.chipTimeSeconds ? formatRaceTime(result.chipTimeSeconds) : '',
-        }
-      }))
-    } catch (err) {
-      setPodiumMessage(`No se pudo cargar el podio: ${err.message}`)
-    } finally {
-      setPodiumLoading(false)
-    }
-  }
-
-  function updatePodiumRow(index, field, value) {
-    setPodiumRows(rows => rows.map((row, i) => i === index ? { ...row, [field]: value } : row))
-  }
-
-  async function handleSavePodium(e) {
-    e.preventDefault()
-    const normalized = podiumRows.map(row => ({
-      bibNumber: row.bibNumber.trim(),
-      finishTimeSeconds: parseRaceTime(row.finishTime),
-      chipTimeSeconds: row.chipTime.trim() ? parseRaceTime(row.chipTime) : undefined,
-    }))
-    if (normalized.some(row => !row.bibNumber || !row.finishTimeSeconds || row.chipTimeSeconds === null)) {
-      setPodiumMessage('Completa los tres dorsales y los tiempos oficiales en formato hh:mm:ss. El tiempo de chip es opcional.')
-      return
-    }
-    if (new Set(normalized.map(row => row.bibNumber)).size !== 3) {
-      setPodiumMessage('Cada puesto debe corresponder a un dorsal diferente.')
-      return
-    }
-
-    setPodiumSaving(true)
-    setPodiumMessage('')
-    try {
-      const result = await saveManualPodium(
-        sesion.accessToken,
-        podiumMarathonId,
-        normalized.map((row, index) => ({
-          bibNumber: row.bibNumber,
-          finishTimeSeconds: row.finishTimeSeconds,
-          ...(row.chipTimeSeconds ? { chipTimeSeconds: row.chipTimeSeconds } : {}),
-          overallRank: index + 1,
-        })),
-      )
-      setPodiumMessage(`Podio registrado: ${result.imported} puestos guardados.`)
-      await fetchPodium({ clearMessage: false })
-    } catch (err) {
-      setPodiumMessage(`No se pudo guardar el podio: ${err.message}`)
-    } finally {
-      setPodiumSaving(false)
-    }
   }
 
   async function fetchUsers() {
@@ -328,167 +163,16 @@ export default function AdminDashboard({ sesion }) {
     fetchRegistrations()
   }
 
-  function openNewMarathonModal() {
-    setEditingMarathon(null)
-    setMarathonForm({ name: '', city: '', startsAt: '', distanceMeters: '', capacity: '', priceCents: '', description: '' })
-    setShowMarathonModal(true)
-  }
-
-  function openEditMarathonModal(m) {
-    setEditingMarathon(m)
-    setMarathonForm({
-      name: m.name, city: m.city,
-      startsAt: m.startsAt ? new Date(m.startsAt).toISOString().slice(0, 16) : '',
-      distanceMeters: m.distanceMeters || '', capacity: m.capacity || '',
-      priceCents: (m.priceCents / 100).toFixed(2), description: m.description || '',
-    })
-    setShowMarathonModal(true)
-  }
-
-  function handleMarathonFormChange(e) {
-    const { name, value } = e.target
-    setMarathonForm(prev => ({ ...prev, [name]: value }))
-  }
-
-  async function handleSaveMarathon(e) {
-    e.preventDefault()
-    setLoading(true)
-    try {
-      const data = {
-        name: marathonForm.name,
-        city: marathonForm.city,
-        startsAt: new Date(marathonForm.startsAt).toISOString(),
-        distanceMeters: parseInt(marathonForm.distanceMeters, 10),
-        capacity: parseInt(marathonForm.capacity, 10),
-        priceCents: Math.round(parseFloat(marathonForm.priceCents) * 100),
-        description: marathonForm.description || undefined,
-      }
-      if (editingMarathon) {
-        await updateMarathon(sesion.accessToken, editingMarathon.id, data)
-        alert('Carrera actualizada')
-      } else {
-        await createMarathon(sesion.accessToken, data)
-        alert('Carrera creada')
-      }
-      setShowMarathonModal(false)
-      fetchMarathons()
-    } catch (err) { alert('Error: ' + err.message) }
-    finally { setLoading(false) }
-  }
-
-  async function handleDeleteMarathon(m) {
-    if (!window.confirm(`¿Eliminar "${m.name}"?`)) return
-    try { await deleteMarathon(sesion.accessToken, m.id); alert('Eliminada'); fetchMarathons() }
-    catch (err) { alert('Error: ' + err.message) }
-  }
-
-  async function handleCreateRehearsal(m) {
-    const texto = window.prompt(
-      `Ensayo de "${m.name}"\n\nSe crea una copia privada con las cuentas que pongas como inscritos de prueba. ` +
-      'La carrera real y sus inscritos no se tocan.\n\nEmails de las cuentas de prueba (separados por coma):'
-    )
-    if (!texto) return
-    const emails = texto.split(/[\s,;]+/).filter(e => e.includes('@'))
-    if (emails.length === 0) { alert('Pon al menos un email'); return }
-    try { await createRehearsal(sesion.accessToken, m.id, emails); alert('Ensayo creado. Prepáralo y lárgalo desde el panel en vivo de la app.'); fetchMarathons() }
-    catch (err) { alert('Error: ' + err.message) }
-  }
-
-  async function handleResetLive(m) {
-    const aviso = m.rehearsalOfId
-      ? 'Vuelve a quedar sin preparar ni largar y se borra lo que corrieron los inscritos de prueba.'
-      : 'Vuelve a quedar sin preparar ni largar y los móviles de sus inscritos se liberan. Lo que ya corrieron no se borra.'
-    if (!window.confirm(`¿Reiniciar "${m.name}"?\n\n${aviso}`)) return
-    try { await resetMarathonLive(sesion.accessToken, m.id); alert('Carrera reiniciada'); fetchMarathons() }
-    catch (err) { alert('Error: ' + err.message) }
-  }
-
-  async function handleTogglePublish(m) {
-    try {
-      if (m.published) { await unpublishMarathon(sesion.accessToken, m.id); alert('Despublicada') }
-      else { await publishMarathon(sesion.accessToken, m.id); alert('Publicada') }
-      fetchMarathons()
-    } catch (err) { alert('Error: ' + err.message) }
-  }
-
-  async function handleExportCsv(m) {
-    try { await downloadRegistrantsCsv(sesion.accessToken, m) }
-    catch (err) { alert('Error: ' + err.message) }
-  }
-
   async function handleExportPaymentsCsv() {
     try { await downloadPaymentsCsv(sesion.accessToken, { q: paySearch, status: payStatus, marathonId: payMarathon }) }
     catch (err) { alert('Error: ' + err.message) }
   }
 
-  // Se abre con el detalle: la lista no trae las URLs de las imagenes.
-  async function openImagesModal(m) {
-    try { setImgMarathon(await getAdminMarathon(sesion.accessToken, m.id)) }
-    catch (err) { alert('Error: ' + err.message) }
-  }
-
-  // Cada imagen se sube al elegirla: lo que se ve despues es lo que guardo el
-  // servidor, no el archivo local.
-  async function handleImageUpload(img, file) {
-    if (!file) return
-    setImgSubiendo(img.campo)
-    try { setImgMarathon(await uploadMarathonImage(sesion.accessToken, imgMarathon.id, img.slot, file)) }
-    catch (err) { alert('Error: ' + err.message) }
-    finally { setImgSubiendo('') }
-  }
-
-  async function handleImageRemove(img) {
-    if (!window.confirm(`¿Quitar ${img.titulo.toLowerCase()}?`)) return
-    setImgSubiendo(img.campo)
-    try { setImgMarathon(await updateMarathon(sesion.accessToken, imgMarathon.id, { [img.campo]: null })) }
-    catch (err) { alert('Error: ' + err.message) }
-    finally { setImgSubiendo('') }
-  }
-
-  function openQrModal(m) {
-    setQrMarathon(m)
-    setQrAmount((m.priceCents / 100).toFixed(2))
-    setQrFile(null)
-  }
-
-  async function handleQrUpload() {
-    if (!qrFile) { alert('Selecciona una imagen QR'); return }
-    setQrUploading(true)
-    try {
-      await uploadMarathonQR(sesion.accessToken, qrMarathon.id, qrFile)
-      const nuevoMonto = parseFloat(qrAmount)
-      if (nuevoMonto > 0 && nuevoMonto !== qrMarathon.priceCents / 100) {
-        await updateMarathon(sesion.accessToken, qrMarathon.id, { priceCents: Math.round(nuevoMonto * 100) })
-      }
-      alert('QR actualizado')
-      setQrMarathon(null); setQrFile(null)
-      fetchMarathons()
-    } catch (err) { alert('Error: ' + err.message) }
-    finally { setQrUploading(false) }
-  }
-
-  async function handleDeleteUser(userId, userName) {
-    if (!window.confirm(`¿Eliminar a ${userName}?`)) return
-    try { await deleteUser(sesion.accessToken, userId); alert('Usuario eliminado'); fetchUsers() }
-    catch (err) { alert('Error: ' + err.message) }
-  }
-
-  async function handleChangeRole(u, nuevoRol) {
-    if (!window.confirm(`¿Cambiar el rol de ${u.name} a ${ROL_LABEL[nuevoRol]}?`)) return
-    try { await updateUser(sesion.accessToken, u.id, { role: nuevoRol }); fetchUsers() }
-    catch (err) { alert('Error: ' + err.message) }
-  }
-
-  const marathonsFiltradas = marathons.filter(m =>
-    m.name.toLowerCase().includes(marathonSearch.toLowerCase()) ||
-    m.city.toLowerCase().includes(marathonSearch.toLowerCase())
-  )
-
   return (
     <div className="dashboard">
       <div className="dashboard-header">
         <div className="container">
-          <h1>{esAdmin ? 'Panel Administrativo' : 'Panel de Organizador'}</h1>
+          <h1>Panel de Organizador</h1>
           <p>CAM RUN 2026, domingo 22 de noviembre en San Miguel</p>
         </div>
       </div>
@@ -498,10 +182,7 @@ export default function AdminDashboard({ sesion }) {
           {[
             ['inscripciones', 'Inscripciones'],
             ['pagos', 'Validar cobros'],
-            esAdmin && ['maratones', 'Carreras'],
-            esAdmin && ['podio', 'Podio oficial'],
             ['usuarios', 'Usuarios'],
-            esAdmin && ['app', 'App Android'],
           ].filter(Boolean).map(([key, label]) => (
             <button key={key} className={`dash-tab${activeTab === key ? ' active' : ''}`} onClick={() => setActiveTab(key)}>
               {label}
@@ -630,111 +311,6 @@ export default function AdminDashboard({ sesion }) {
           </div>
         )}
 
-        {/* CARRERAS */}
-        {activeTab === 'maratones' && !loading && (
-          <div className="dash-card">
-            <div className="dash-card-header">
-              <h2>Carreras ({marathonsFiltradas.length})</h2>
-              <div className="dash-search-bar">
-                <input type="text" placeholder="Buscar..." value={marathonSearch} onChange={e => setMarathonSearch(e.target.value)} className="dash-search-input" />
-                <button className="btn-primary-sm" onClick={openNewMarathonModal}>+ Nueva</button>
-              </div>
-            </div>
-            {marathonsFiltradas.length === 0 ? <div className="dash-empty"><span></span><p>No hay carreras.</p></div> : (
-              <div className="table-wrap">
-                <table className="dash-table">
-                  <thead><tr><th>Nombre</th><th>Ciudad</th><th>Fecha</th><th>Precio</th><th>Inscritos</th><th>Estado</th><th>Acciones</th></tr></thead>
-                  <tbody>
-                    {marathonsFiltradas.map(m => (
-                      <tr key={m.id}>
-                        <td><div className="cell-name">{m.name}{m.rehearsalOfId && <span className="status-badge badge-draft" style={{ marginLeft: 8 }}>Ensayo</span>}</div><div className="cell-sub">{m.slug}</div></td>
-                        <td>{m.city}</td>
-                        <td>{new Date(m.startsAt).toLocaleDateString()}</td>
-                        <td>{(m.priceCents / 100).toFixed(2)} Bs</td>
-                        <td>{m.slotsTaken}/{m.capacity}</td>
-                        <td><span className={`status-badge ${m.published ? 'badge-confirmed' : 'badge-draft'}`}>{m.published ? 'Publicada' : 'Borrador'}</span></td>
-                        <td className="actions-cell">
-                          <button className="btn-outline-sm" onClick={() => openEditMarathonModal(m)}>Editar</button>
-                          <button className="btn-outline-sm" onClick={() => openImagesModal(m)}>Imágenes</button>
-                          <button className="btn-outline-sm" onClick={() => openQrModal(m)}>QR</button>
-                          <button className="btn-outline-sm" onClick={() => handleExportCsv(m)}>Exportar a Excel</button>
-                          {!m.rehearsalOfId && <button className="btn-outline-sm" onClick={() => handleTogglePublish(m)}>{m.published ? 'Ocultar' : 'Publicar'}</button>}
-                          {!m.rehearsalOfId && <button className="btn-outline-sm" onClick={() => handleCreateRehearsal(m)}>Ensayo</button>}
-                          {(m.preparingAt || m.liveStartedAt || m.liveFinishedAt) && <button className="btn-outline-sm" onClick={() => handleResetLive(m)}>Reiniciar</button>}
-                          <button className="btn-danger-sm" onClick={() => handleDeleteMarathon(m)}>Eliminar</button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* PODIO OFICIAL */}
-        {activeTab === 'podio' && esAdmin && (
-          <div className="dash-card">
-            <div className="dash-card-header">
-              <h2>Registrar podio oficial</h2>
-              <select
-                value={podiumMarathonId}
-                onChange={e => setPodiumMarathonId(e.target.value)}
-                aria-label="Carrera para registrar resultados"
-                disabled={marathons.length === 0 || podiumSaving}
-              >
-                {marathons.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-              </select>
-            </div>
-            {podiumLoading ? (
-              <div className="dash-loading"><span>Cargando resultados…</span></div>
-            ) : (
-              <form className="podium-form" onSubmit={handleSavePodium}>
-                <p>Ingresa los dorsales y tiempos oficiales según la planilla física. El tiempo de chip es opcional.</p>
-                {podiumRows.map((row, index) => (
-                  <div className="podium-row" key={index}>
-                    <strong>{['1.er lugar', '2.º lugar', '3.er lugar'][index]}</strong>
-                    <label className="form-label">Dorsal
-                      <input
-                        className="form-input"
-                        value={row.bibNumber}
-                        onChange={e => updatePodiumRow(index, 'bibNumber', e.target.value)}
-                        maxLength={40}
-                        required
-                      />
-                    </label>
-                    <label className="form-label">Tiempo oficial (hh:mm:ss)
-                      <input
-                        className="form-input"
-                        value={row.finishTime}
-                        onChange={e => updatePodiumRow(index, 'finishTime', e.target.value)}
-                        placeholder="03:42:18"
-                        inputMode="numeric"
-                        pattern="[0-9]+:[0-5][0-9]:[0-5][0-9]"
-                        required
-                      />
-                    </label>
-                    <label className="form-label">Tiempo de chip
-                      <input
-                        className="form-input"
-                        value={row.chipTime}
-                        onChange={e => updatePodiumRow(index, 'chipTime', e.target.value)}
-                        placeholder="Opcional"
-                        inputMode="numeric"
-                        pattern="[0-9]+:[0-5][0-9]:[0-5][0-9]"
-                      />
-                    </label>
-                  </div>
-                ))}
-                {podiumMessage && <p className="podium-message" role="status">{podiumMessage}</p>}
-                <button className="btn-primary" type="submit" disabled={!podiumMarathonId || podiumSaving}>
-                  {podiumSaving ? 'Guardando…' : 'Guardar podio'}
-                </button>
-              </form>
-            )}
-          </div>
-        )}
-
         {/* USUARIOS */}
         {activeTab === 'usuarios' && !loading && (
           <div className="dash-card">
@@ -748,7 +324,7 @@ export default function AdminDashboard({ sesion }) {
             {users.length === 0 ? <div className="dash-empty"><span></span><p>No hay usuarios.</p></div> : (
               <div className="table-wrap">
                 <table className="dash-table">
-                  <thead><tr><th>Nombre</th><th>Email</th><th>CI</th><th>Rol</th><th>Acciones</th></tr></thead>
+                  <thead><tr><th>Nombre</th><th>Email</th><th>CI</th><th>Rol</th></tr></thead>
                   <tbody>
                     {users.map(u => (
                       <tr key={u.id}>
@@ -756,16 +332,7 @@ export default function AdminDashboard({ sesion }) {
                         <td>{u.email || '—'}</td>
                         <td>{u.ci || '—'}</td>
                         <td>
-                          {esAdmin && u.id !== sesion.user.id ? (
-                            <select value={u.role} onChange={e => handleChangeRole(u, e.target.value)} aria-label={`Rol de ${u.name}`}>
-                              {Object.entries(ROL_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                            </select>
-                          ) : (
-                            <span className={`status-badge ${u.role === 'admin' ? 'badge-confirmed' : 'badge-pending'}`}>{ROL_LABEL[u.role] || u.role}</span>
-                          )}
-                        </td>
-                        <td className="actions-cell">
-                          {esAdmin && u.id !== sesion.user.id && <button className="btn-danger-sm" onClick={() => handleDeleteUser(u.id, u.name)}>Eliminar</button>}
+                          <span className={`status-badge ${u.role === 'admin' ? 'badge-confirmed' : 'badge-pending'}`}>{ROL_LABEL[u.role] || u.role}</span>
                         </td>
                       </tr>
                     ))}
@@ -775,110 +342,7 @@ export default function AdminDashboard({ sesion }) {
             )}
           </div>
         )}
-
-        {/* APP ANDROID */}
-        {activeTab === 'app' && (
-          <div className="dash-card">
-            <div className="dash-card-header"><h2>App Android (.apk)</h2></div>
-            <div className="modal-body">
-              {apkInfo ? (
-                <p>
-                  Versión publicada: {(apkInfo.bytes / 1024 / 1024).toFixed(1)} MB · subida el{' '}
-                  {new Date(apkInfo.uploadedAt).toLocaleString('es-BO')}
-                </p>
-              ) : (
-                <p>Aún no se subió ningún APK.</p>
-              )}
-              <p>Enlace de descarga (el del QR de la página): <a href={APK_URL}>{APK_URL}</a></p>
-              <form onSubmit={handleUploadApk}>
-                <label className="form-label">
-                  Nueva versión
-                  <input type="file" accept=".apk,application/vnd.android.package-archive" required onChange={e => setApkFile(e.target.files[0] || null)} className="form-input" />
-                </label>
-                <button type="submit" className="btn-primary" disabled={!apkFile || apkUploading}>
-                  {apkUploading ? 'Subiendo…' : 'Subir y reemplazar'}
-                </button>
-              </form>
-            </div>
-          </div>
-        )}
       </div>
-
-      {/* MODAL CARRERA */}
-      {showMarathonModal && (
-        <div className="modal-overlay" onClick={() => setShowMarathonModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>{editingMarathon ? ' Editar' : 'Nueva'} Carrera</h2>
-              <button className="modal-close" onClick={() => setShowMarathonModal(false)}>×</button>
-            </div>
-            <form onSubmit={handleSaveMarathon}>
-              <div className="modal-body">
-                <label className="form-label">Nombre *<input type="text" name="name" required value={marathonForm.name} onChange={handleMarathonFormChange} className="form-input" /></label>
-                <label className="form-label">Ciudad *<input type="text" name="city" required value={marathonForm.city} onChange={handleMarathonFormChange} className="form-input" /></label>
-                <label className="form-label">Fecha *<input type="datetime-local" name="startsAt" required value={marathonForm.startsAt} onChange={handleMarathonFormChange} className="form-input" /></label>
-                <label className="form-label">Distancia (m) *<input type="number" name="distanceMeters" required value={marathonForm.distanceMeters} onChange={handleMarathonFormChange} className="form-input" /></label>
-                <label className="form-label">Capacidad *<input type="number" name="capacity" required value={marathonForm.capacity} onChange={handleMarathonFormChange} className="form-input" /></label>
-                <label className="form-label">Precio (Bs) *<input type="number" name="priceCents" required step="0.01" value={marathonForm.priceCents} onChange={handleMarathonFormChange} className="form-input" /></label>
-                <label className="form-label">Descripción<textarea name="description" value={marathonForm.description} onChange={handleMarathonFormChange} className="form-input" rows="3" /></label>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn-outline" onClick={() => setShowMarathonModal(false)}>Cancelar</button>
-                <button type="submit" className="btn-primary">{editingMarathon ? 'Guardar' : 'Crear'}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL IMAGENES */}
-      {imgMarathon && (
-        <div className="modal-overlay" onClick={() => !imgSubiendo && setImgMarathon(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header"><h2>Imágenes - {imgMarathon.name}</h2><button className="modal-close" onClick={() => setImgMarathon(null)}>×</button></div>
-            <div className="modal-body">
-              {IMAGENES_MARATON.map(img => (
-                <div key={img.campo} style={{ marginBottom: 20 }}>
-                  <strong>{img.titulo}</strong>
-                  <p style={{ margin: '4px 0 8px', fontSize: 13, opacity: 0.7 }}>{img.ayuda}</p>
-                  <div style={{ aspectRatio: img.ratio, maxWidth: img.ratio === '4 / 5' ? 200 : 320, background: '#F4F2FF', border: '1px dashed #C4B5FD', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                    {imgSubiendo === img.campo
-                      ? <span>Subiendo...</span>
-                      : imgMarathon[img.campo]
-                        ? <img src={imgMarathon[img.campo]} alt={img.titulo} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                        : <span style={{ opacity: 0.6 }}>Sin imagen</span>}
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
-                    <input type="file" accept="image/*" disabled={!!imgSubiendo} onChange={e => { handleImageUpload(img, e.target.files[0]); e.target.value = '' }} className="form-input" />
-                    {imgMarathon[img.campo] && <button className="btn-danger-sm" disabled={!!imgSubiendo} onClick={() => handleImageRemove(img)}>Quitar</button>}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="modal-footer">
-              <button className="btn-primary" onClick={() => setImgMarathon(null)} disabled={!!imgSubiendo}>Listo</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL QR */}
-      {qrMarathon && (
-        <div className="modal-overlay" onClick={() => setQrMarathon(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header"><h2> QR - {qrMarathon.name}</h2><button className="modal-close" onClick={() => setQrMarathon(null)}>×</button></div>
-            <div className="modal-body">
-              <label className="form-label">Monto (Bs):<input type="number" step="0.01" value={qrAmount} onChange={e => setQrAmount(e.target.value)} className="form-input" /></label>
-              <label className="form-label">Imagen QR:<input type="file" accept="image/*" onChange={e => setQrFile(e.target.files[0])} className="form-input" /></label>
-              {qrFile && <p className="file-selected">{qrFile.name}</p>}
-            </div>
-            <div className="modal-footer">
-              <button className="btn-outline" onClick={() => setQrMarathon(null)}>Cancelar</button>
-              <button className="btn-primary" onClick={handleQrUpload} disabled={qrUploading}>{qrUploading ? 'Subiendo...' : 'Guardar'}</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* MODAL VALIDAR COBRO */}
       {selectedPayment && (

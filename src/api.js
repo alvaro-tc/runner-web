@@ -155,8 +155,9 @@ export async function confirmTransfer(paymentId, token) {
 }
 
 // ADMIN: INSCRIPCIONES
-export async function getAdminRegistrations(token, { status = '', search = '', page = 1, limit = 40 } = {}) {
+export async function getAdminRegistrations(token, { status = '', search = '', marathonId = '', page = 1, limit = 40 } = {}) {
   const params = new URLSearchParams()
+  if (marathonId) params.append('marathonId', marathonId)
   if (status) params.append('status', status)
   if (search) params.append('search', search)
   params.append('page', page)
@@ -296,6 +297,21 @@ export async function resetMarathonLive(token, marathonId) {
   return fetchApi(`/admin/marathons/${marathonId}/reset-live`, { method: 'POST', token })
 }
 
+// Metricas de una carrera para el resumen del admin
+export async function getMarathonStats(token, marathonId) {
+  return fetchApi(`/admin/marathons/${marathonId}/stats`, { token })
+}
+
+export async function setRegistrationsOpen(token, marathonId, abiertas) {
+  return fetchApi(`/admin/marathons/${marathonId}/${abiertas ? 'reopen' : 'close'}-registrations`, { method: 'POST', token })
+}
+
+// Cuenta una visita a la pagina de inicio. Las del detalle de la carrera las
+// cuenta el backend al pedirlo. Si falla no importa.
+export function trackPageView() {
+  fetch(`${BASE}/marathons/page-view`, { method: 'POST', keepalive: true }).catch(() => {})
+}
+
 export async function publishMarathon(token, marathonId) {
   return fetchApi(`/admin/marathons/${marathonId}/publish`, {
     method: 'POST',
@@ -314,6 +330,22 @@ export async function unpublishMarathon(token, marathonId) {
 export async function getAdminUsers(token, search) {
   const query = search ? `?q=${encodeURIComponent(search)}` : ''
   return fetchApi(`/admin/users${query}`, { token })
+}
+
+// Paginado, para el OSI: devuelve { data, meta: { total, page, pageSize } }
+export async function listUsers(token, { q = '', role = '', page = 1, pageSize = 20 } = {}) {
+  const params = new URLSearchParams({ page, pageSize })
+  if (q) params.append('q', q)
+  if (role) params.append('role', role)
+  return fetchApi(`/admin/users?${params}`, { token, withMeta: true })
+}
+
+export async function setUserPassword(token, userId, password) {
+  return fetchApi(`/admin/users/${userId}/password`, {
+    method: 'POST',
+    body: JSON.stringify({ password }),
+    token,
+  })
 }
 
 export async function createUser(token, data) {

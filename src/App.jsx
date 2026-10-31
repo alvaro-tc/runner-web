@@ -3,6 +3,8 @@ import Header from './Header'
 import Login from './Login'
 import Register from './Register'
 import AdminDashboard from './AdminDashboard'
+import PanelCarreras from './PanelCarreras'
+import PanelOsi from './PanelOsi'
 import RunnerDashboard from './RunnerDashboard'
 import { esStaff } from './roles'
 import Landing, { PasosInscripcion } from './Landing'
@@ -72,6 +74,8 @@ export default function App() {
       )
     }
 
+    if (sesion.user.role === 'admin') return <PanelCarreras sesion={sesion} />
+    if (sesion.user.role === 'osi') return <PanelOsi sesion={sesion} />
     if (esStaff(sesion.user.role)) {
       return <AdminDashboard sesion={sesion} onLogout={cerrarSesion} />
     }

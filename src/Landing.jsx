@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import './landing.css'
+import CarreraDetalle from './CarreraDetalle'
+import { trackPageView } from './api'
 
 const LARGADA = new Date('2026-11-22T08:00:00-04:00')
 const WHATSAPP = 'https://wa.me/59170868610'
@@ -129,6 +131,8 @@ export function PasosInscripcion({ abierto, onCerrar, onRegistro, onAcceso }) {
 const Wa = () => <svg><use href="#i-wa" /></svg>
 
 export default function Landing({ onInscribirme }) {
+  const [verCarrera, setVerCarrera] = useState(false)
+  useEffect(trackPageView, [])
   return (
     <div className="lp">
       <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true">
@@ -169,9 +173,10 @@ export default function Landing({ onInscribirme }) {
 
       <section className="day" id="el-dia">
         <div className="wrap day-grid">
-          <a className="poster" href="/landing/afiche.jpg" target="_blank" rel="noopener noreferrer">
+          <button className="poster" onClick={() => setVerCarrera(true)} aria-label="Ver todos los detalles de la carrera">
             <img src="/landing/afiche.jpg" alt="Afiche oficial de CAM RUN: domingo 22 de noviembre de 2026, 08:00, Av. Montenegro, San Miguel. 5 km y 1.5 km. Inscripciones al 70868610." loading="lazy" width="900" height="1149" />
-          </a>
+            <span className="poster-cta">Ver detalles de la carrera</span>
+          </button>
           <div>
             <h2>El día de la carrera</h2>
             <p className="lead">Organiza One Life Fitness junto al Centro de Apoyo a la Mujer. Guardá el afiche y compartilo con quien quieras sumar.</p>
@@ -387,6 +392,12 @@ export default function Landing({ onInscribirme }) {
           <p className="credits">Fotos de eventos: CAM Bolivia. Fotos de Wikimedia Commons: «Jong geleerd oud gedaan, dochter doet ook mee, Ladiesrun 2015» (CC BY-SA 3.0) y «Panorama ciudad de La Paz Bolivia» (CC BY 2.0).</p>
         </div>
       </footer>
+
+      <CarreraDetalle
+        abierto={verCarrera}
+        onCerrar={() => setVerCarrera(false)}
+        onInscribirme={() => { setVerCarrera(false); onInscribirme() }}
+      />
 
       <a className="wa-float" href={WHATSAPP_INFO} target="_blank" rel="noopener noreferrer" aria-label="Escribir por WhatsApp"><Wa /></a>
     </div>
