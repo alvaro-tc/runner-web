@@ -220,7 +220,8 @@ export default function PanelCarreras({ sesion, puede = () => true }) {
 }
 
 /// Reemplaza al <select>: con miniatura, fecha y estado se reconoce la carrera de un vistazo.
-function SelectorCarrera({ carreras, sel, onElegir, onNueva }) {
+/// `todas`: texto de una opcion extra que elige '' (sin filtro), para usarlo como filtro en Cobros.
+export function SelectorCarrera({ carreras, sel, onElegir, onNueva, todas }) {
   const [abierto, setAbierto] = useState(false)
   const [q, setQ] = useState('')
   const caja = useRef(null)
@@ -243,9 +244,9 @@ function SelectorCarrera({ carreras, sel, onElegir, onNueva }) {
   return (
     <div className="ad-switch" ref={caja}>
       <button className="ad-switch-btn" aria-haspopup="listbox" aria-expanded={abierto} onClick={() => setAbierto(a => !a)}>
-        {sel ? <Miniatura carrera={sel} /> : <span className="ad-thumb"><Icon name="flag" /></span>}
+        {sel ? <Miniatura carrera={sel} /> : <span className="ad-thumb" style={{ width: 40, height: 40 }}><Icon name="flag" /></span>}
         <span className="ad-switch-txt">
-          <strong>{sel?.name || 'Sin carreras'}</strong>
+          <strong>{sel?.name || todas || 'Sin carreras'}</strong>
           {sel && <small>{fecha(sel.startsAt)} · {sel.city}</small>}
         </span>
         <Icon name="chevron" className={`ad-switch-chev${abierto ? ' is-up' : ''}`} />
@@ -259,6 +260,12 @@ function SelectorCarrera({ carreras, sel, onElegir, onNueva }) {
             </label>
           )}
           <div className="ad-pop-list" role="listbox" aria-label="Carreras">
+            {todas && !filtro && (
+              <button role="option" aria-selected={!sel} className={`ad-pop-item${!sel ? ' is-on' : ''}`} onClick={() => elegir('')}>
+                <span className="ad-thumb" style={{ width: 36, height: 36 }}><Icon name="flag" size={18} /></span>
+                <span className="ad-switch-txt"><strong>{todas}</strong><small>Sin filtro</small></span>
+              </button>
+            )}
             {visibles.length === 0 && <p className="ad-pop-empty">Ninguna coincide.</p>}
             {grupos.map(([titulo, lista]) => lista.length > 0 && (
               <div key={titulo} role="group" aria-label={titulo}>

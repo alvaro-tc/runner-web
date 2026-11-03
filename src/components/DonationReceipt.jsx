@@ -1,3 +1,5 @@
+import { createPortal } from 'react-dom'
+
 function formatDate(value) {
   const date = value ? new Date(value) : new Date()
   if (Number.isNaN(date.getTime())) return ''
@@ -54,7 +56,8 @@ export default function DonationReceipt({ data, onClose }) {
   const amount = Number(data?.amountCents ?? data?.amount ?? 0) / (data?.amountCents != null ? 100 : 1)
   const money = `${amount.toFixed(2)} ${data?.currencySymbol || 'Bs'}`
 
-  return (
+  // Portal a <body>: un ancestro animado con transform atrapaba el position:fixed.
+  return createPortal(
     <div className="receipt-overlay" onClick={onClose}>
       <div className="receipt-modal" onClick={e => e.stopPropagation()}>
         <div className="receipt-modal-header">
@@ -95,6 +98,7 @@ export default function DonationReceipt({ data, onClose }) {
           <button className="btn-primary" onClick={() => window.print()}>Imprimir / PDF</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { SelectorCarrera } from './PanelCarreras'
 import { Icon } from './components/AdminCharts'
 import DonationReceipt from './components/DonationReceipt'
 import { getAdminPayments, getAdminMarathons, confirmTransfer, approvePaymentProof, rejectPaymentProof, downloadPaymentsCsv } from './api'
@@ -51,16 +53,17 @@ export default function PanelCobros({ sesion, puede }) {
         <button className="ad-btn" onClick={() => downloadPaymentsCsv(token, { q, status: estado, marathonId: carrera }).catch(e => setError(e.message))}><Icon name="download" />Exportar a Excel</button>
       </header>
 
+      {carreras.length > 0 && (
+        <div className="ad-toolbar">
+          <SelectorCarrera carreras={carreras} sel={carreras.find(m => m.id === carrera)} todas="Todas las carreras"
+            onElegir={id => { setCarrera(id); setPage(1) }} />
+        </div>
+      )}
+
       <div className="ad-chipbar" role="tablist" aria-label="Estado del cobro">
         {ESTADOS.map(([k, l]) => (
           <button key={k} role="tab" aria-selected={estado === k} className={`ad-chip${estado === k ? ' is-on' : ''}`} onClick={() => { setEstado(k); setPage(1) }}>{l}</button>
         ))}
-        {carreras.length > 0 && (
-          <select className="ad-select" value={carrera} onChange={e => { setCarrera(e.target.value); setPage(1) }} aria-label="Carrera">
-            <option value="">Todas las carreras</option>
-            {carreras.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-          </select>
-        )}
       </div>
 
       {error && <p className="ad-alert" role="alert"><Icon name="alert" />{error}</p>}
@@ -123,6 +126,7 @@ function ModalCobro({ token, pago, valida, onCerrar, onListo }) {
   const [nota, setNota] = useState('')
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
+  const [img, setImg] = useState('cargando')
   const pendiente = pago.status === 'pending' && valida
 
   async function aprobar() {
@@ -147,15 +151,23 @@ function ModalCobro({ token, pago, valida, onCerrar, onListo }) {
     ['Fecha', new Date(pago.createdAt).toLocaleString('es-BO')], ['Validado por', pago.validatedBy], ['Nota', pago.proofNote],
   ].filter(([, v]) => v)
 
-  return (
+  // Portal a <body>: ningun ancestro animado puede atrapar el overlay fijo.
+  return createPortal(
     <div className="modal-overlay" onClick={() => !guardando && onCerrar()}>
       <div className="modal ad-modal is-wide" role="dialog" aria-modal="true" aria-label={`Cobro de ${pago.runner}`} onClick={e => e.stopPropagation()}>
         <div className="modal-header"><h2>Cobro de {pago.runner}</h2><button className="modal-close" onClick={onCerrar} aria-label="Cerrar">×</button></div>
         <div className="modal-body ad-cobro">
           <div className="ad-cobro-proof">
-            {pago.proofImageUrl
-              ? <a href={pago.proofImageUrl} target="_blank" rel="noreferrer" title="Abrir en tamaño completo"><img src={pago.proofImageUrl} alt={`Comprobante de ${pago.runner}`} /></a>
-              : <div className="ad-chart-empty"><Icon name="image" size={22} /><p>No se subió comprobante.</p></div>}
+            {!pago.proofImageUrl ? <div className="ad-chart-empty"><Icon name="image" size={22} /><p>No se subió comprobante.</p></div>
+              : img === 'error' ? (
+                <div className="ad-chart-empty" role="alert"><Icon name="alert" size={22} /><p>No se pudo cargar la imagen.</p>
+                  <a className="ad-btn is-sm" href={pago.proofImageUrl} target="_blank" rel="noreferrer">Abrir en otra pestaña</a></div>
+              ) : (
+                <a href={pago.proofImageUrl} target="_blank" rel="noreferrer" title="Abrir en tamaño completo" className={img === 'cargando' ? 'is-loading' : ''}>
+                  {img === 'cargando' && <span className="ad-skel" aria-hidden="true" />}
+                  <img src={pago.proofImageUrl} alt={`Comprobante de ${pago.runner}`} onLoad={() => setImg('ok')} onError={() => setImg('error')} />
+                </a>
+              )}
           </div>
           <div>
             <dl className="ad-dl">{datos.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
@@ -173,6 +185,7 @@ function ModalCobro({ token, pago, valida, onCerrar, onListo }) {
           {pendiente && <button className="ad-btn is-primary" onClick={aprobar} disabled={guardando}>{guardando ? 'Guardando…' : pago.proofId ? 'Aprobar pago' : 'Confirmar sin comprobante'}</button>}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
