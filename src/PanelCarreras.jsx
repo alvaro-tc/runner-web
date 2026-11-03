@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import DonationReceipt from './components/DonationReceipt'
+import { DailyChart, Donut, Funnel, HBars, Icon, Sparkline } from './components/AdminCharts'
+import './admin.css'
 import {
   getAdminMarathons,
   getAdminMarathon,
@@ -27,20 +29,27 @@ const IMAGENES = [
 ]
 
 const SECCIONES = [
-  ['datos', 'Datos generales'],
-  ['inscripcion', 'Inscripción'],
-  ['incluye', 'Qué incluye'],
-  ['cronograma', 'Cronograma'],
-  ['kit', 'Retiro de kit'],
-  ['imagenes', 'Imágenes'],
-  ['cobro', 'Cobro por QR'],
-  ['delicado', 'Acciones delicadas'],
+  ['datos', 'Datos generales', 'flag'],
+  ['inscripcion', 'Inscripción', 'ticket'],
+  ['incluye', 'Qué incluye', 'package'],
+  ['cronograma', 'Cronograma', 'clock'],
+  ['kit', 'Retiro de kit', 'pin'],
+  ['imagenes', 'Imágenes', 'image'],
+  ['cobro', 'Cobro por QR', 'qr'],
+  ['delicado', 'Acciones delicadas', 'shield'],
 ]
 
-const ESTADO_INSCRIPCION = { open: 'Abiertas', closing_soon: 'Por cerrar', full: 'Cupos llenos', closed: 'Cerradas' }
+const VISTAS = [['resumen', 'Resumen', 'chart'], ['editar', 'Editar carrera', 'edit'], ['inscritas', 'Inscritas', 'users']]
+
+const ESTADO_INSCRIPCION = { open: 'Inscripciones abiertas', closing_soon: 'Por cerrar', full: 'Cupos llenos', closed: 'Inscripciones cerradas' }
+const EDADES = ['<18', '18-29', '30-39', '40-49', '50-59', '60+']
+const COLOR = { si: '#8B5CF6', no: '#C4B5FD', sin: '#E2DCF5' }
 
 const bs = cents => `Bs ${((cents || 0) / 100).toLocaleString('es-BO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
 const num = n => (n ?? 0).toLocaleString('es-BO')
+const fecha = (iso, o = { day: 'numeric', month: 'short', year: 'numeric' }) => new Date(iso).toLocaleDateString('es-BO', o)
+const iniciales = nombre => (nombre || '?').split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase()
+const faltan = iso => Math.ceil((new Date(iso) - Date.now()) / 864e5)
 
 // datetime-local trabaja en hora del navegador; toISOString() daria UTC
 function aLocal(iso) {
@@ -74,6 +83,17 @@ function formDesde(m) {
 
 function leerGuardada() {
   try { return localStorage.getItem('admin.carrera') || '' } catch { return '' }
+}
+
+const miniatura = c => c.logoHorizontalUrl || c.coverUrl || c.logoVerticalUrl
+
+function Miniatura({ carrera, size = 40 }) {
+  const src = miniatura(carrera)
+  return (
+    <span className="ad-thumb" style={{ width: size, height: size }} aria-hidden="true">
+      {src ? <img src={src} alt="" /> : iniciales(carrera.name)}
+    </span>
+  )
 }
 
 export default function PanelCarreras({ sesion }) {
@@ -120,60 +140,61 @@ export default function PanelCarreras({ sesion }) {
     await Promise.all([cargarCarreras(), cargarCarrera()])
   }
 
-  if (cargando) return <div className="dashboard"><div className="dash-loading pc-top">Cargando carreras…</div></div>
+  if (cargando) return <div className="ad ad-loading"><span className="ad-spinner" /> Cargando carreras…</div>
 
-  const dias = sel ? Math.ceil((new Date(sel.startsAt) - Date.now()) / 864e5) : 0
+  const vista = VISTAS.find(v => v[0] === tab)
 
   return (
-    <div className="dashboard pc">
-      <header className="pc-band">
-        <div className="container pc-band-in">
-          <label className="pc-picker">
-            <span>Carrera</span>
-            <select value={selId} onChange={e => setSelId(e.target.value)} aria-label="Elegir carrera">
-              {carreras.length === 0 && <option value="">Todavía no hay carreras</option>}
-              {carreras.map(c => (
-                <option key={c.id} value={c.id}>{c.name}{c.rehearsalOfId ? ' (ensayo)' : ''}</option>
-              ))}
-            </select>
-          </label>
-          {sel && (
-            <p className="pc-meta">
-              <span className={`pc-chip ${sel.published ? 'is-on' : ''}`}>{sel.published ? 'Publicada' : 'Borrador'}</span>
-              {sel.city}, {new Date(sel.startsAt).toLocaleDateString('es-BO', { day: 'numeric', month: 'long', year: 'numeric' })}
-              {dias > 0 ? `, faltan ${dias} días` : dias === 0 ? ', es hoy' : ', ya se corrió'}
-            </p>
-          )}
-          <button className="pc-new" onClick={() => setNueva(true)}>Nueva carrera</button>
-        </div>
-      </header>
+    <div className="ad">
+      <aside className="ad-side">
+        <SelectorCarrera carreras={carreras} sel={sel} onElegir={id => setSelId(id)} onNueva={() => setNueva(true)} />
+        {sel && (
+          <nav className="ad-nav" aria-label="Secciones de la carrera">
+            {VISTAS.map(([k, l, ic]) => (
+              <button key={k} className={`ad-nav-item${tab === k ? ' is-on' : ''}`} aria-current={tab === k ? 'page' : undefined} onClick={() => setTab(k)}>
+                <Icon name={ic} />{l}
+                {k === 'inscritas' && stats && <span className="ad-nav-n">{num(stats.confirmed)}</span>}
+              </button>
+            ))}
+          </nav>
+        )}
+        {sel && <EstadoLateral carrera={sel} />}
+      </aside>
 
-      <div className="container dashboard-body">
-        {error && <p className="dash-error" role="alert">{error} <button className="pc-link" onClick={() => setError('')}>Cerrar</button></p>}
+      <main className="ad-main">
+        {error && <p className="ad-alert" role="alert"><Icon name="alert" />{error}<button onClick={() => setError('')} aria-label="Cerrar aviso"><Icon name="x" size={16} /></button></p>}
 
         {!sel ? (
-          <div className="dash-card dash-empty-state">
+          <div className="ad-card ad-empty">
+            <span className="ad-empty-ic"><Icon name="flag" size={28} /></span>
             <h2>Creá la primera carrera</h2>
             <p>Con la carrera creada vas a ver sus inscritas, lo recaudado y las visitas.</p>
-            <button className="btn-primary" style={{ marginTop: '1rem' }} onClick={() => setNueva(true)}>Nueva carrera</button>
+            <button className="ad-btn is-primary" onClick={() => setNueva(true)}><Icon name="plus" />Nueva carrera</button>
           </div>
         ) : (
           <>
-            <nav className="dash-tabs" aria-label="Secciones de la carrera">
-              {[['resumen', 'Resumen'], ['editar', 'Editar carrera'], ['inscritas', 'Inscritas']].map(([k, l]) => (
-                <button key={k} className={`dash-tab${tab === k ? ' active' : ''}`} aria-current={tab === k} onClick={() => setTab(k)}>{l}</button>
-              ))}
-            </nav>
+            <header className="ad-head">
+              <div>
+                <p className="ad-eyebrow">{vista[1]}</p>
+                <h1>{sel.name}</h1>
+                <p className="ad-head-meta">
+                  <span><Icon name="calendar" size={15} />{fecha(sel.startsAt, { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+                  <span><Icon name="pin" size={15} />{sel.city}</span>
+                  <span className={`ad-pill ${sel.rehearsalOfId ? 'is-gold' : sel.published ? 'is-ok' : ''}`}>{sel.rehearsalOfId ? 'Ensayo' : sel.published ? 'Publicada' : 'Borrador'}</span>
+                </p>
+              </div>
+              <button className="ad-btn" onClick={() => downloadRegistrantsCsv(token, sel).catch(e => setError(e.message))}><Icon name="download" />Exportar inscritas</button>
+            </header>
 
             {tab === 'resumen' && <Resumen carrera={sel} stats={stats} statsError={statsError} />}
             {tab === 'editar' && (detalle
               ? <EditorCarrera key={detalle.id} token={token} carrera={detalle} onCambio={setDetalle} onGuardado={refrescar}
                   onEliminada={() => { setSelId(''); cargarCarreras(); setTab('resumen') }} onError={setError} />
-              : <div className="dash-loading">Cargando carrera…</div>)}
+              : <div className="ad-loading"><span className="ad-spinner" /> Cargando carrera…</div>)}
             {tab === 'inscritas' && <Inscritas key={sel.id} token={token} carrera={sel} />}
           </>
         )}
-      </div>
+      </main>
 
       {nueva && (
         <NuevaCarrera token={token} onCerrar={() => setNueva(false)} onCreada={async m => {
@@ -187,56 +208,227 @@ export default function PanelCarreras({ sesion }) {
   )
 }
 
-function Resumen({ carrera, stats, statsError }) {
-  const inscritas = stats?.confirmed ?? carrera.slotsTaken
-  const cupos = stats?.capacity ?? carrera.capacity
-  const pct = cupos ? Math.min(100, (inscritas / cupos) * 100) : 0
-  const conversion = stats?.marathonViews ? (inscritas / stats.marathonViews) * 100 : null
+/// Reemplaza al <select>: con miniatura, fecha y estado se reconoce la carrera de un vistazo.
+function SelectorCarrera({ carreras, sel, onElegir, onNueva }) {
+  const [abierto, setAbierto] = useState(false)
+  const [q, setQ] = useState('')
+  const caja = useRef(null)
+
+  useEffect(() => {
+    if (!abierto) return
+    const fuera = e => { if (!caja.current?.contains(e.target)) setAbierto(false) }
+    const esc = e => { if (e.key === 'Escape') setAbierto(false) }
+    document.addEventListener('mousedown', fuera)
+    document.addEventListener('keydown', esc)
+    return () => { document.removeEventListener('mousedown', fuera); document.removeEventListener('keydown', esc) }
+  }, [abierto])
+
+  const filtro = q.trim().toLowerCase()
+  const visibles = carreras.filter(c => !filtro || `${c.name} ${c.city}`.toLowerCase().includes(filtro))
+  const grupos = [['Carreras', visibles.filter(c => !c.rehearsalOfId)], ['Ensayos', visibles.filter(c => c.rehearsalOfId)]]
+
+  function elegir(id) { onElegir(id); setAbierto(false); setQ('') }
 
   return (
-    <div className="pc-resumen">
-      <section className="pc-lane" aria-label="Cupos ocupados">
-        <div className="pc-lane-head">
-          <p className="pc-big"><strong>{num(inscritas)}</strong> inscritas de {num(cupos)} cupos</p>
-          <p className="pc-lane-side">{num(Math.max(0, cupos - inscritas))} cupos libres</p>
-        </div>
-        <div className="pc-track" role="progressbar" aria-valuemin={0} aria-valuemax={cupos} aria-valuenow={inscritas}>
-          <div className="pc-track-fill" style={{ width: `${pct}%` }} />
-          <div className="pc-track-runner" style={{ left: `${pct}%` }} />
-          <div className="pc-track-finish" />
-        </div>
-        <p className="pc-lane-foot">{pct.toFixed(0)}% de la carrera ocupada</p>
-      </section>
+    <div className="ad-switch" ref={caja}>
+      <p className="ad-side-label">Carrera</p>
+      <button className="ad-switch-btn" aria-haspopup="listbox" aria-expanded={abierto} onClick={() => setAbierto(a => !a)}>
+        {sel ? <Miniatura carrera={sel} /> : <span className="ad-thumb"><Icon name="flag" /></span>}
+        <span className="ad-switch-txt">
+          <strong>{sel?.name || 'Sin carreras'}</strong>
+          {sel && <small>{fecha(sel.startsAt)} · {sel.city}</small>}
+        </span>
+        <Icon name="chevron" className={`ad-switch-chev${abierto ? ' is-up' : ''}`} />
+      </button>
 
-      {statsError && <p className="dash-error">No se pudieron cargar las métricas: {statsError}</p>}
-
-      <div className="pc-groups">
-        <section className="pc-group">
-          <h3>Dinero</h3>
-          <Kpi label="Total recaudado" value={stats ? bs(stats.revenueCents) : '…'} nota="Suma de cobros validados" fuerte />
-          <Kpi label="Cobros validados" value={stats ? num(stats.paymentsPaid) : '…'} />
-          <Kpi label="Cobros por validar" value={stats ? num(stats.paymentsPending) : '…'}
-            nota={stats ? `${num(stats.proofsInReview)} con comprobante esperando revisión` : ' '} alerta={stats?.paymentsPending > 0} />
-        </section>
-        <section className="pc-group">
-          <h3>Alcance</h3>
-          <Kpi label="Visitas a la página" value={stats ? num(stats.pageViews) : '…'} nota="Aperturas de la página de inicio" />
-          <Kpi label="Vistas de la carrera" value={stats ? num(stats.marathonViews) : '…'} nota="Aperturas del detalle, web y app" />
-          <Kpi label="Conversión" value={conversion === null ? '—' : `${conversion.toFixed(1)}%`} nota="Inscritas por cada vista de la carrera" />
-        </section>
-      </div>
+      {abierto && (
+        <div className="ad-pop">
+          {carreras.length > 5 && (
+            <label className="ad-pop-search"><Icon name="search" size={16} />
+              <input autoFocus placeholder="Buscar carrera" value={q} onChange={e => setQ(e.target.value)} aria-label="Buscar carrera" />
+            </label>
+          )}
+          <div className="ad-pop-list" role="listbox" aria-label="Carreras">
+            {visibles.length === 0 && <p className="ad-pop-empty">Ninguna coincide.</p>}
+            {grupos.map(([titulo, lista]) => lista.length > 0 && (
+              <div key={titulo} role="group" aria-label={titulo}>
+                <p className="ad-pop-group">{titulo}</p>
+                {lista.map(c => {
+                  const estado = c.rehearsalOfId ? 'Ensayo' : c.published ? 'Publicada' : 'Borrador'
+                  return (
+                    <button key={c.id} role="option" aria-selected={c.id === sel?.id} className={`ad-pop-item${c.id === sel?.id ? ' is-on' : ''}`} onClick={() => elegir(c.id)}>
+                      <Miniatura carrera={c} size={36} />
+                      <span className="ad-switch-txt">
+                        <strong>{c.name}</strong>
+                        <small><i className={`ad-state is-${estado.toLowerCase()}`} />{estado} · {fecha(c.startsAt)}</small>
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
+          <button className="ad-pop-new" onClick={() => { setAbierto(false); onNueva() }}><Icon name="plus" />Nueva carrera</button>
+        </div>
+      )}
     </div>
   )
 }
 
-function Kpi({ label, value, nota, fuerte, alerta }) {
-  const cargando = value === '…'
+function EstadoLateral({ carrera }) {
+  const d = faltan(carrera.startsAt)
+  const abiertas = carrera.registrationStatus !== 'closed' && carrera.registrationStatus !== 'full'
   return (
-    <div className={`pc-kpi${fuerte ? ' is-strong' : ''}${alerta ? ' is-alert' : ''}`} aria-busy={cargando}>
-      <span className="pc-kpi-label">{label}</span>
-      {cargando ? <span className="pc-skel" aria-label="Cargando" /> : <span className="pc-kpi-value">{value}</span>}
-      {nota && <span className="pc-kpi-note">{nota}</span>}
+    <div className="ad-side-card">
+      <p className="ad-side-count"><strong>{d > 0 ? d : 0}</strong>{d > 1 ? 'días para la largada' : d === 1 ? 'día para la largada' : d === 0 ? 'Hoy es la largada' : 'Carrera finalizada'}</p>
+      <p className={`ad-side-state${abiertas ? ' is-on' : ''}`}><i />{ESTADO_INSCRIPCION[carrera.registrationStatus] || carrera.registrationStatus}</p>
     </div>
+  )
+}
+
+function Resumen({ carrera, stats, statsError }) {
+  const [modo, setModo] = useState('inscritas')
+
+  const s = stats
+  const daily = s?.daily || []
+  const ult7 = daily.slice(-7).reduce((t, d) => t + d.confirmed, 0)
+  const prev7 = daily.slice(-14, -7).reduce((t, d) => t + d.confirmed, 0)
+  const ticket = s?.paymentsPaid ? s.revenueCents / s.paymentsPaid : 0
+  const est = s?.registrationsByStatus || {}
+  const iniciadas = Object.values(est).reduce((t, n) => t + n, 0)
+  const alPago = (est.pending_payment || 0) + (est.confirmed || 0) + (est.refunded || 0)
+  const dias = faltan(carrera.startsAt)
+  const ritmo = daily.length ? (s.confirmed / daily.length) : 0
+
+  if (statsError) return <p className="ad-alert" role="alert"><Icon name="alert" />No se pudieron cargar las métricas: {statsError}</p>
+
+  const sino = (obj, si, no) => [
+    { label: si, value: obj?.si || 0, color: COLOR.si },
+    { label: no, value: obj?.no || 0, color: COLOR.no },
+    ...(obj?.sin_dato ? [{ label: 'Sin dato', value: obj.sin_dato, color: COLOR.sin }] : []),
+  ]
+  const categorias = Object.entries(s?.categories || {}).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value)
+  const edades = [...EDADES, 'sin_dato'].filter(k => k !== 'sin_dato' || s?.ages?.sin_dato).map(k => ({ label: k === 'sin_dato' ? 'Sin dato' : `${k} años`.replace('<18 años', 'Menos de 18'), value: s?.ages?.[k] || 0 }))
+  const pct = (a, b) => b ? Math.round((a / b) * 100) : 0
+
+  return (
+    <div className="ad-resumen" aria-busy={!s}>
+      <div className="ad-kpis">
+        <Kpi icon="users" label="Inscritas confirmadas" value={s && num(s.confirmed)}
+          delta={s && (ult7 || prev7) ? { n: ult7, sube: ult7 >= prev7, txt: `+${num(ult7)} últimos 7 días` } : null}
+          spark={daily.map(d => d.confirmed)} />
+        <Kpi icon="coins" label="Total recaudado" value={s && bs(s.revenueCents)}
+          nota={s && (ticket ? `Ticket promedio ${bs(ticket)}` : 'Sin cobros validados todavía')}
+          spark={daily.map(d => d.revenueCents)} tono="gold" />
+        <Kpi icon="receipt" label="Cobros por validar" value={s && num(s.paymentsPending)}
+          nota={s && (s.proofsInReview ? `${num(s.proofsInReview)} con comprobante esperando` : 'Nada pendiente de revisión')}
+          tono={s?.paymentsPending > 0 ? 'warn' : 'ok'} />
+        <Kpi icon="clock" label={dias >= 0 ? 'Días para la largada' : 'Días desde la largada'} value={num(Math.abs(dias))}
+          nota={s && (ritmo ? `Ritmo de ${ritmo.toFixed(1)} inscritas por día` : fecha(carrera.startsAt))} tono="deep" />
+      </div>
+
+      <div className="ad-row ad-row-main">
+        <section className="ad-card ad-chart-card">
+          <header className="ad-card-head">
+            <div>
+              <h2>Ritmo de inscripciones</h2>
+              <p>Cobros validados por día. La línea es el acumulado.</p>
+            </div>
+            <div className="ad-seg" role="radiogroup" aria-label="Qué mostrar">
+              {[['inscritas', 'Inscritas'], ['dinero', 'Recaudado']].map(([k, l]) => (
+                <button key={k} role="radio" aria-checked={modo === k} className={modo === k ? 'is-on' : ''} onClick={() => setModo(k)}>{l}</button>
+              ))}
+            </div>
+          </header>
+          {!s ? <div className="ad-skel ad-skel-chart" /> : daily.every(d => !d.confirmed)
+            ? <EmptyChart texto="Cuando se validen los primeros cobros vas a ver acá el ritmo diario." />
+            : <DailyChart data={daily} modo={modo} formato={modo === 'dinero' ? bs : num} />}
+        </section>
+
+        <section className="ad-card">
+          <header className="ad-card-head">
+            <div><h2>Embudo</h2><p>De la visita a la inscripción confirmada.</p></div>
+          </header>
+          {!s ? <div className="ad-skel ad-skel-list" /> : (
+            <>
+              <Funnel pasos={[
+                { label: 'Vieron la carrera', value: s.marathonViews },
+                { label: 'Empezaron a inscribirse', value: iniciadas },
+                { label: 'Llegaron al pago', value: alPago },
+                { label: 'Confirmadas', value: s.confirmed },
+              ]} />
+              <p className="ad-foot"><Icon name="trend" size={15} />Conversión total <b>{s.marathonViews ? ((s.confirmed / s.marathonViews) * 100).toFixed(1) : '—'}%</b> · {num(s.pageViews)} visitas al inicio</p>
+            </>
+          )}
+        </section>
+      </div>
+
+      <div className="ad-row ad-row-3">
+        <section className="ad-card">
+          <header className="ad-card-head"><div><h2>Conocen el CAM</h2><p>Lo que respondieron al inscribirse.</p></div></header>
+          {!s ? <div className="ad-skel ad-skel-donut" /> : s.confirmed === 0 ? <EmptyChart texto="Sin inscritas todavía." />
+            : <Donut label="Conocen el CAM" centro={`${pct(s.knowsCam?.si || 0, s.confirmed)}%`} partes={sino(s.knowsCam, 'Ya lo conocían', 'No lo conocían')} />}
+        </section>
+        <section className="ad-card">
+          <header className="ad-card-head"><div><h2>Posibles donantes</h2><p>Aceptan que el CAM las llame.</p></div></header>
+          {!s ? <div className="ad-skel ad-skel-donut" /> : s.confirmed === 0 ? <EmptyChart texto="Sin inscritas todavía." />
+            : <Donut label="Aceptan llamada de donante" centro={num(s.acceptsDonorCall?.si || 0)} partes={sino(s.acceptsDonorCall, 'Aceptan la llamada', 'Prefieren que no')} />}
+        </section>
+        <section className="ad-card">
+          <header className="ad-card-head"><div><h2>Edades</h2><p>A la fecha de la largada.</p></div></header>
+          {!s ? <div className="ad-skel ad-skel-list" /> : s.confirmed === 0 ? <EmptyChart texto="Sin inscritas todavía." /> : <HBars filas={edades} />}
+        </section>
+      </div>
+
+      {categorias.length > 1 && (
+        <section className="ad-card">
+          <header className="ad-card-head"><div><h2>Por categoría</h2><p>Inscritas confirmadas en cada categoría.</p></div></header>
+          <HBars filas={categorias} />
+        </section>
+      )}
+    </div>
+  )
+}
+
+function EmptyChart({ texto }) {
+  return <div className="ad-chart-empty"><Icon name="chart" size={22} /><p>{texto}</p></div>
+}
+
+function Kpi({ icon, label, value, nota, delta, spark, tono = 'violet' }) {
+  return (
+    <div className={`ad-kpi is-${tono}`}>
+      <div className="ad-kpi-top">
+        <span className="ad-kpi-ic"><Icon name={icon} /></span>
+        <span className="ad-kpi-label">{label}</span>
+      </div>
+      {value == null ? <span className="ad-skel ad-skel-num" aria-label="Cargando" /> : <strong className="ad-kpi-value">{value}</strong>}
+      {delta ? <span className={`ad-delta${delta.sube ? ' is-up' : ''}`}><Icon name="trend" size={14} />{delta.txt}</span>
+        : nota ? <span className="ad-kpi-note">{nota}</span> : null}
+      {spark?.some(Boolean) && <Sparkline values={spark} label={`Tendencia de ${label.toLowerCase()}`} />}
+    </div>
+  )
+}
+
+function Seccion({ id, icon, titulo, desc, children, extra, peligro }) {
+  return (
+    <section id={`pc-${id}`} className={`ad-card ad-sec${peligro ? ' is-danger' : ''}`}>
+      <header className="ad-sec-head">
+        <span className="ad-sec-ic"><Icon name={icon} /></span>
+        <div><h2>{titulo}</h2>{desc && <p>{desc}</p>}</div>
+        {extra}
+      </header>
+      {children}
+    </section>
+  )
+}
+
+function Campo({ label, ayuda, span, children }) {
+  return (
+    <label className={`ad-field${span ? ' is-span' : ''}`}>
+      <span>{label}</span>
+      {children}
+      {ayuda && <small>{ayuda}</small>}
+    </label>
   )
 }
 
@@ -246,6 +438,10 @@ function EditorCarrera({ token, carrera, onCambio, onGuardado, onEliminada, onEr
   const [aviso, setAviso] = useState('')
   const [subiendo, setSubiendo] = useState('')
   const [qrFile, setQrFile] = useState(null)
+  const [activa, setActiva] = useState('datos')
+
+  const original = useMemo(() => JSON.stringify(formDesde(carrera)), [carrera])
+  const sucio = JSON.stringify(f) !== original
 
   // El aviso flota abajo: las acciones del final de la hoja quedan lejos de la barra de guardado
   useEffect(() => {
@@ -253,6 +449,16 @@ function EditorCarrera({ token, carrera, onCambio, onGuardado, onEliminada, onEr
     const t = setTimeout(() => setAviso(''), 4000)
     return () => clearTimeout(t)
   }, [aviso])
+
+  // Resalta en el índice la sección que se está leyendo
+  useEffect(() => {
+    const obs = new IntersectionObserver(es => {
+      const vis = es.filter(e => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0]
+      if (vis) setActiva(vis.target.id.slice(3))
+    }, { rootMargin: '-100px 0px -60% 0px' })
+    SECCIONES.forEach(([id]) => { const el = document.getElementById(`pc-${id}`); if (el) obs.observe(el) })
+    return () => obs.disconnect()
+  }, [])
 
   const set = (campo, valor) => setF(prev => ({ ...prev, [campo]: valor }))
   const campo = e => set(e.target.name, e.target.value)
@@ -343,158 +549,195 @@ function EditorCarrera({ token, carrera, onCambio, onGuardado, onEliminada, onEr
 
   const cerradas = carrera.registrationStatus === 'closed'
   const enVivo = carrera.preparingAt || carrera.liveStartedAt || carrera.liveFinishedAt
+  const km = (parseInt(f.distanceMeters, 10) || 0) * (parseInt(f.laps, 10) || 1) / 1000
+  const portada = miniatura(carrera)
+  // Lo que falta completar, para el punto del índice
+  const completa = {
+    datos: f.name && f.city && f.startsAt && f.description,
+    inscripcion: f.capacity,
+    incluye: f.includes.trim(),
+    cronograma: f.schedule.length > 0,
+    kit: f.kitAddress.trim(),
+    imagenes: IMAGENES.some(i => carrera[i.campo]),
+    cobro: carrera.paymentQrUrl || carrera.paymentQrPayload,
+  }
 
   return (
-    <div className="pc-editor">
-      <p className={`pc-toast${aviso ? ' is-on' : ''}`} role="status" aria-live="polite">{aviso}</p>
-      <nav className="pc-index" aria-label="Partes de la carrera">
-        {SECCIONES.map(([id, t]) => <a key={id} href={`#pc-${id}`}>{t}</a>)}
+    <div className="ad-editor">
+      <p className={`ad-toast${aviso ? ' is-on' : ''}`} role="status" aria-live="polite"><Icon name="check" size={16} />{aviso}</p>
+
+      <nav className="ad-index" aria-label="Partes de la carrera">
+        {SECCIONES.map(([id, t, ic]) => (
+          <a key={id} href={`#pc-${id}`} className={activa === id ? 'is-on' : ''} aria-current={activa === id ? 'true' : undefined}>
+            <Icon name={ic} size={16} />{t}
+            {id in completa && <i className={`ad-dotc${completa[id] ? ' is-ok' : ''}`} title={completa[id] ? 'Completo' : 'Falta completar'} />}
+          </a>
+        ))}
       </nav>
 
-      <div className="pc-sheets">
-        <form onSubmit={guardar} className="pc-form">
-          <fieldset id="pc-datos" className="pc-sheet">
-            <legend>Datos generales</legend>
-            <div className="pc-grid">
-              <label className="form-label pc-span">Nombre<input className="form-input" name="name" required value={f.name} onChange={campo} /></label>
-              <label className="form-label">Dirección web<input className="form-input" name="slug" value={f.slug} onChange={campo} pattern="[a-z0-9-]+" title="Minúsculas, números y guiones" /></label>
-              <label className="form-label">Ciudad<input className="form-input" name="city" required value={f.city} onChange={campo} /></label>
-              <label className="form-label">Largada<input className="form-input" type="datetime-local" name="startsAt" required value={f.startsAt} onChange={campo} /></label>
-              <label className="form-label">Precio (Bs)<input className="form-input" type="number" min="0" step="0.01" name="price" required value={f.price} onChange={campo} /></label>
-              <label className="form-label">Distancia de una vuelta (m)<input className="form-input" type="number" min="1" name="distanceMeters" required value={f.distanceMeters} onChange={campo} /></label>
-              <label className="form-label">Vueltas<input className="form-input" type="number" min="1" name="laps" required value={f.laps} onChange={campo} /></label>
-              <label className="form-label pc-span">Descripción<textarea className="form-input" rows="4" name="description" maxLength={4000} value={f.description} onChange={campo} /></label>
-            </div>
-          </fieldset>
-
-          <fieldset id="pc-inscripcion" className="pc-sheet">
-            <legend>Inscripción</legend>
-            <div className="pc-grid">
-              <label className="form-label">Cupos<input className="form-input" type="number" min="1" name="capacity" required value={f.capacity} onChange={campo} /></label>
-              <label className="form-label">Cierre automático<input className="form-input" type="datetime-local" name="registrationClosesAt" value={f.registrationClosesAt} onChange={campo} /></label>
-            </div>
-            <div className="pc-row">
-              <span>Estado actual: <strong>{ESTADO_INSCRIPCION[carrera.registrationStatus] || carrera.registrationStatus}</strong></span>
-              <button type="button" className="btn-outline-sm" onClick={() => accion(() => setRegistrationsOpen(token, carrera.id, cerradas), cerradas ? 'Inscripciones abiertas' : 'Inscripciones cerradas')}>
-                {cerradas ? 'Abrir inscripciones' : 'Cerrar inscripciones'}
-              </button>
-            </div>
-          </fieldset>
-
-          <fieldset id="pc-incluye" className="pc-sheet">
-            <legend>Qué incluye</legend>
-            <label className="form-label">Una cosa por línea<textarea className="form-input" rows="4" name="includes" value={f.includes} onChange={campo} placeholder={'Polera\nMedalla\nHidratación'} /></label>
-          </fieldset>
-
-          <fieldset id="pc-cronograma" className="pc-sheet">
-            <legend>Cronograma</legend>
-            {f.schedule.length === 0 && <p className="pc-hint">Sin horarios cargados. Agregá la acreditación, la largada y la premiación.</p>}
-            {f.schedule.map((s, i) => (
-              <div key={i} className="pc-sched">
-                <input className="form-input" type="time" aria-label="Hora" value={s.time} onChange={e => setFila(i, 'time', e.target.value)} />
-                <input className="form-input" aria-label="Qué pasa" placeholder="Largada" value={s.title} onChange={e => setFila(i, 'title', e.target.value)} />
-                <input className="form-input" aria-label="Detalle" placeholder="Detalle (opcional)" value={s.description} onChange={e => setFila(i, 'description', e.target.value)} />
-                <button type="button" className="btn-danger-sm" aria-label="Quitar horario" onClick={() => set('schedule', f.schedule.filter((_, j) => j !== i))}>Quitar</button>
-              </div>
-            ))}
-            <button type="button" className="btn-outline-sm" onClick={() => set('schedule', [...f.schedule, { time: '', title: '', description: '' }])}>Agregar horario</button>
-          </fieldset>
-
-          <fieldset id="pc-kit" className="pc-sheet">
-            <legend>Retiro de kit</legend>
-            <div className="pc-grid">
-              <label className="form-label pc-span">Dirección<input className="form-input" name="kitAddress" value={f.kitAddress} onChange={campo} placeholder="Vacío si no hay retiro de kit" /></label>
-              <label className="form-label">Desde<input className="form-input" type="datetime-local" name="kitFrom" value={f.kitFrom} onChange={campo} /></label>
-              <label className="form-label">Hasta<input className="form-input" type="datetime-local" name="kitTo" value={f.kitTo} onChange={campo} /></label>
-            </div>
-          </fieldset>
-
-          <fieldset id="pc-cobro-texto" className="pc-sheet pc-sheet-flat">
-            <label className="form-label">Instrucciones del cobro por QR<textarea className="form-input" rows="2" maxLength={500} name="paymentQrInstructions" value={f.paymentQrInstructions} onChange={campo} placeholder="Ej.: poné tu CI en la glosa" /></label>
-          </fieldset>
-
-          <div className="pc-savebar">
-            <button type="button" className="btn-ghost-sm" onClick={() => { setF(formDesde(carrera)); setAviso('') }} disabled={guardando}>Descartar cambios</button>
-            <button type="submit" className="btn-primary-sm" disabled={guardando}>{guardando ? 'Guardando…' : 'Guardar cambios'}</button>
+      <div className="ad-sheets">
+        <div className="ad-preview" style={portada ? { '--img': `url("${portada}")` } : undefined}>
+          <div className="ad-preview-in">
+            <span className="ad-pill is-glass">Vista previa</span>
+            <h2>{f.name || 'Sin nombre'}</h2>
+            <p>
+              {f.startsAt && <span><Icon name="calendar" size={15} />{fecha(f.startsAt, { weekday: 'short', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}</span>}
+              {f.city && <span><Icon name="pin" size={15} />{f.city}</span>}
+              {km > 0 && <span><Icon name="flag" size={15} />{km.toLocaleString('es-BO', { maximumFractionDigits: 2 })} km{f.laps > 1 ? ` · ${f.laps} vueltas` : ''}</span>}
+            </p>
           </div>
+          <strong className="ad-preview-price">{f.price ? bs(Math.round(parseFloat(f.price) * 100)) : '—'}</strong>
+        </div>
+
+        <form onSubmit={guardar} className="ad-form" id="ad-form">
+          <Seccion id="datos" icon="flag" titulo="Datos generales" desc="Lo que ven las corredoras en la web y en la app.">
+            <div className="ad-grid">
+              <Campo label="Nombre" span><input name="name" required value={f.name} onChange={campo} /></Campo>
+              <Campo label="Dirección web" ayuda="Minúsculas, números y guiones">
+                <input name="slug" value={f.slug} onChange={campo} pattern="[a-z0-9-]+" title="Minúsculas, números y guiones" />
+              </Campo>
+              <Campo label="Ciudad"><input name="city" required value={f.city} onChange={campo} /></Campo>
+              <Campo label="Largada"><input type="datetime-local" name="startsAt" required value={f.startsAt} onChange={campo} /></Campo>
+              <Campo label="Precio">
+                <span className="ad-affix"><em>Bs</em><input type="number" min="0" step="0.01" name="price" required value={f.price} onChange={campo} /></span>
+              </Campo>
+              <Campo label="Distancia de una vuelta">
+                <span className="ad-affix is-end"><input type="number" min="1" name="distanceMeters" required value={f.distanceMeters} onChange={campo} /><em>m</em></span>
+              </Campo>
+              <Campo label="Vueltas" ayuda={km > 0 ? `Total: ${km.toLocaleString('es-BO', { maximumFractionDigits: 2 })} km` : null}>
+                <input type="number" min="1" name="laps" required value={f.laps} onChange={campo} />
+              </Campo>
+              <Campo label="Descripción" span ayuda={`${f.description.length} / 4000`}><textarea rows="5" name="description" maxLength={4000} value={f.description} onChange={campo} /></Campo>
+            </div>
+          </Seccion>
+
+          <Seccion id="inscripcion" icon="ticket" titulo="Inscripción" desc="Cuántas pueden inscribirse y hasta cuándo.">
+            <div className="ad-grid">
+              <Campo label="Cupos"><input type="number" min="1" name="capacity" required value={f.capacity} onChange={campo} /></Campo>
+              <Campo label="Cierre automático" ayuda="Vacío: quedan abiertas hasta que las cierres."><input type="datetime-local" name="registrationClosesAt" value={f.registrationClosesAt} onChange={campo} /></Campo>
+            </div>
+            <div className="ad-toggle-row">
+              <div>
+                <strong>{ESTADO_INSCRIPCION[carrera.registrationStatus] || carrera.registrationStatus}</strong>
+                <small>{cerradas ? 'Nadie puede inscribirse ahora.' : 'Las corredoras pueden inscribirse.'} Se aplica al instante.</small>
+              </div>
+              <button type="button" role="switch" aria-checked={!cerradas} aria-label="Inscripciones abiertas" className={`ad-switch-tg${!cerradas ? ' is-on' : ''}`}
+                onClick={() => accion(() => setRegistrationsOpen(token, carrera.id, cerradas), cerradas ? 'Inscripciones abiertas' : 'Inscripciones cerradas')}><i /></button>
+            </div>
+          </Seccion>
+
+          <Seccion id="incluye" icon="package" titulo="Qué incluye" desc="Una cosa por línea. Se muestra como lista.">
+            <div className="ad-split">
+              <Campo label="Elementos"><textarea rows="5" name="includes" value={f.includes} onChange={campo} placeholder={'Polera\nMedalla\nHidratación'} /></Campo>
+              <ul className="ad-chips" aria-label="Así se ve">
+                {f.includes.split('\n').map(s => s.trim()).filter(Boolean).map((s, i) => <li key={i}><Icon name="check" size={14} />{s}</li>)}
+              </ul>
+            </div>
+          </Seccion>
+
+          <Seccion id="cronograma" icon="clock" titulo="Cronograma" desc="Acreditación, largada, premiación…"
+            extra={<button type="button" className="ad-btn is-sm" onClick={() => set('schedule', [...f.schedule, { time: '', title: '', description: '' }])}><Icon name="plus" size={16} />Agregar</button>}>
+            {f.schedule.length === 0 ? <p className="ad-hint">Sin horarios cargados.</p> : (
+              <ol className="ad-timeline">
+                {f.schedule.map((s, i) => (
+                  <li key={i}>
+                    <input type="time" aria-label="Hora" value={s.time} onChange={e => setFila(i, 'time', e.target.value)} />
+                    <input aria-label="Qué pasa" placeholder="Largada" value={s.title} onChange={e => setFila(i, 'title', e.target.value)} />
+                    <input aria-label="Detalle" placeholder="Detalle (opcional)" value={s.description} onChange={e => setFila(i, 'description', e.target.value)} />
+                    <button type="button" className="ad-icon-btn is-danger" aria-label="Quitar horario" onClick={() => set('schedule', f.schedule.filter((_, j) => j !== i))}><Icon name="trash" size={16} /></button>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </Seccion>
+
+          <Seccion id="kit" icon="pin" titulo="Retiro de kit" desc="Dejá la dirección vacía si no hay retiro.">
+            <div className="ad-grid">
+              <Campo label="Dirección" span><input name="kitAddress" value={f.kitAddress} onChange={campo} placeholder="Ej.: Av. Ballivián 1234, Calacoto" /></Campo>
+              <Campo label="Desde"><input type="datetime-local" name="kitFrom" value={f.kitFrom} onChange={campo} /></Campo>
+              <Campo label="Hasta"><input type="datetime-local" name="kitTo" value={f.kitTo} onChange={campo} /></Campo>
+            </div>
+          </Seccion>
         </form>
 
-        <section id="pc-imagenes" className="pc-sheet">
-          <h3 className="pc-legend">Imágenes</h3>
-          <p className="pc-hint">Cada imagen se guarda apenas la elegís.</p>
-          <div className="pc-imgs">
+        <Seccion id="imagenes" icon="image" titulo="Imágenes" desc="Cada imagen se guarda apenas la elegís.">
+          <div className="ad-imgs">
             {IMAGENES.map(img => (
-              <div key={img.campo} className="pc-img">
-                <strong>{img.titulo}</strong>
-                <span className="pc-hint">{img.ayuda}</span>
-                <div className="pc-img-box" style={{ aspectRatio: img.ratio }}>
-                  {subiendo === img.campo ? 'Subiendo…' : carrera[img.campo] ? <img src={carrera[img.campo]} alt={img.titulo} /> : 'Sin imagen'}
+              <div key={img.campo} className="ad-img">
+                <div className="ad-img-box" style={{ aspectRatio: img.ratio }}>
+                  {subiendo === img.campo ? <span className="ad-spinner" /> : carrera[img.campo] ? <img src={carrera[img.campo]} alt={img.titulo} /> : <><Icon name="image" size={26} /><span>Sin imagen</span></>}
                 </div>
-                <div className="pc-row">
-                  <label className="btn-outline-sm pc-file">{carrera[img.campo] ? 'Cambiar' : 'Subir'}
+                <strong>{img.titulo}</strong>
+                <small>{img.ayuda}</small>
+                <div className="ad-img-actions">
+                  <label className="ad-btn is-sm ad-file">{carrera[img.campo] ? 'Cambiar' : 'Subir'}
                     <input type="file" accept="image/*" disabled={!!subiendo} onChange={e => { subirImagen(img, e.target.files[0]); e.target.value = '' }} />
                   </label>
-                  {carrera[img.campo] && <button className="btn-danger-sm" disabled={!!subiendo} onClick={() => quitarImagen(img)}>Quitar</button>}
+                  {carrera[img.campo] && <button className="ad-icon-btn is-danger" disabled={!!subiendo} onClick={() => quitarImagen(img)} aria-label={`Quitar ${img.titulo}`}><Icon name="trash" size={16} /></button>}
                 </div>
               </div>
             ))}
           </div>
-        </section>
+        </Seccion>
 
-        <section id="pc-cobro" className="pc-sheet">
-          <h3 className="pc-legend">Cobro por QR</h3>
-          <div className="pc-qr">
-            <div className="pc-img-box" style={{ aspectRatio: '1', maxWidth: 160 }}>
-              {carrera.paymentQrUrl ? <img src={carrera.paymentQrUrl} alt="QR de cobro actual" /> : 'Sin QR'}
+        <Seccion id="cobro" icon="qr" titulo="Cobro por QR" desc="El QR que ven las corredoras al pagar. El monto es el precio de la carrera.">
+          <div className="ad-qr">
+            <div className="ad-img-box is-qr">
+              {carrera.paymentQrUrl ? <img src={carrera.paymentQrUrl} alt="QR de cobro actual" /> : <><Icon name="qr" size={26} /><span>Sin QR</span></>}
             </div>
-            <div>
-              <p className="pc-hint">El QR que ven las corredoras al pagar. El monto es el precio de la carrera.</p>
-              <div className="pc-row">
-                <label className="btn-outline-sm pc-file">Elegir imagen
+            <div className="ad-qr-side">
+              <Campo label="Instrucciones junto al QR" ayuda="Se guardan con los demás cambios.">
+                <textarea form="ad-form" rows="3" maxLength={500} name="paymentQrInstructions" value={f.paymentQrInstructions} onChange={campo} placeholder="Ej.: poné tu CI en la glosa" />
+              </Campo>
+              <div className="ad-img-actions">
+                <label className="ad-btn is-sm ad-file">Elegir imagen
                   <input type="file" accept="image/*" onChange={e => setQrFile(e.target.files[0] || null)} />
                 </label>
-                {qrFile && <span className="pc-hint">{qrFile.name}</span>}
-                <button className="btn-primary-sm" disabled={!qrFile || subiendo === 'qr'} onClick={subirQr}>{subiendo === 'qr' ? 'Subiendo…' : 'Guardar QR'}</button>
+                {qrFile && <span className="ad-hint">{qrFile.name}</span>}
+                <button className="ad-btn is-sm is-primary" disabled={!qrFile || subiendo === 'qr'} onClick={subirQr}>{subiendo === 'qr' ? 'Subiendo…' : 'Guardar QR'}</button>
               </div>
             </div>
           </div>
-        </section>
+        </Seccion>
 
-        <section id="pc-delicado" className="pc-sheet pc-danger">
-          <h3 className="pc-legend">Acciones delicadas</h3>
-          {!carrera.rehearsalOfId && (
-            <div className="pc-action">
-              <div><strong>{carrera.published ? 'Ocultar de la web y la app' : 'Publicar'}</strong>
-                <span className="pc-hint">{carrera.published ? 'Deja de verse; las inscritas no se pierden.' : 'La carrera aparece en la web y en la app.'}</span></div>
-              <button className="btn-outline-sm" onClick={() => accion(() => carrera.published ? unpublishMarathon(token, carrera.id) : publishMarathon(token, carrera.id), carrera.published ? 'Carrera ocultada' : 'Carrera publicada')}>
-                {carrera.published ? 'Ocultar' : 'Publicar'}
-              </button>
-            </div>
-          )}
-          <div className="pc-action">
-            <div><strong>Exportar inscritas</strong><span className="pc-hint">Planilla para Excel con todas las inscritas.</span></div>
-            <button className="btn-outline-sm" onClick={() => downloadRegistrantsCsv(token, carrera).catch(e => onError(e.message))}>Exportar a Excel</button>
+        <Seccion id="delicado" icon="shield" titulo="Acciones delicadas" desc="Se aplican al instante." peligro>
+          <div className="ad-actions">
+            {!carrera.rehearsalOfId && (
+              <Accion titulo={carrera.published ? 'Ocultar de la web y la app' : 'Publicar'}
+                desc={carrera.published ? 'Deja de verse; las inscritas no se pierden.' : 'La carrera aparece en la web y en la app.'}>
+                <button className="ad-btn is-sm" onClick={() => accion(() => carrera.published ? unpublishMarathon(token, carrera.id) : publishMarathon(token, carrera.id), carrera.published ? 'Carrera ocultada' : 'Carrera publicada')}>
+                  {carrera.published ? 'Ocultar' : 'Publicar'}
+                </button>
+              </Accion>
+            )}
+            {!carrera.rehearsalOfId && (
+              <Accion titulo="Crear ensayo" desc="Copia privada para probar la largada con cuentas de prueba.">
+                <button className="ad-btn is-sm" onClick={ensayo}>Crear ensayo</button>
+              </Accion>
+            )}
+            {enVivo && (
+              <Accion titulo="Reiniciar en vivo" desc="Quita preparación, largada y cierre.">
+                <button className="ad-btn is-sm" onClick={reiniciar}>Reiniciar</button>
+              </Accion>
+            )}
+            <Accion titulo="Eliminar carrera" desc="No se puede deshacer.">
+              <button className="ad-btn is-sm is-danger" onClick={eliminar}><Icon name="trash" size={16} />Eliminar</button>
+            </Accion>
           </div>
-          {!carrera.rehearsalOfId && (
-            <div className="pc-action">
-              <div><strong>Crear ensayo</strong><span className="pc-hint">Copia privada para probar la largada con cuentas de prueba.</span></div>
-              <button className="btn-outline-sm" onClick={ensayo}>Crear ensayo</button>
-            </div>
-          )}
-          {enVivo && (
-            <div className="pc-action">
-              <div><strong>Reiniciar en vivo</strong><span className="pc-hint">Quita preparación, largada y cierre.</span></div>
-              <button className="btn-outline-sm" onClick={reiniciar}>Reiniciar</button>
-            </div>
-          )}
-          <div className="pc-action">
-            <div><strong>Eliminar carrera</strong><span className="pc-hint">No se puede deshacer.</span></div>
-            <button className="btn-danger-sm" onClick={eliminar}>Eliminar</button>
-          </div>
-        </section>
+        </Seccion>
+      </div>
+
+      <div className={`ad-savebar${sucio ? ' is-dirty' : ''}`}>
+        <span className="ad-savebar-state"><i />{sucio ? 'Tenés cambios sin guardar' : 'Todo guardado'}</span>
+        <button type="button" className="ad-btn is-ghost" onClick={() => { setF(formDesde(carrera)); setAviso('') }} disabled={guardando || !sucio}>Descartar</button>
+        <button type="submit" form="ad-form" className="ad-btn is-primary" disabled={guardando || !sucio}>{guardando ? 'Guardando…' : 'Guardar cambios'}</button>
       </div>
     </div>
   )
+}
+
+function Accion({ titulo, desc, children }) {
+  return <div className="ad-action"><div><strong>{titulo}</strong><small>{desc}</small></div>{children}</div>
 }
 
 function Inscritas({ token, carrera }) {
@@ -524,49 +767,51 @@ function Inscritas({ token, carrera }) {
   }
 
   return (
-    <div className="dash-card">
-      <div className="dash-card-header">
-        <h2>Inscritas ({num(meta.total)})</h2>
-        <form className="dash-search-bar" onSubmit={buscar}>
-          <input type="search" className="dash-search-input" placeholder="Nombre, CI, celular o email" value={busqueda} onChange={e => setBusqueda(e.target.value)} aria-label="Buscar inscrita" />
-          <button className="btn-outline-sm">Buscar</button>
-          <button type="button" className="btn-outline-sm" onClick={() => downloadRegistrantsCsv(token, carrera).catch(e => setError(e.message))}>Exportar a Excel</button>
+    <section className="ad-card ad-table-card">
+      <header className="ad-card-head">
+        <div><h2>Inscritas confirmadas <span className="ad-count">{num(meta.total)}</span></h2><p>Solo las que ya tienen el pago validado.</p></div>
+        <form className="ad-search" onSubmit={buscar} role="search">
+          <Icon name="search" size={16} />
+          <input type="search" placeholder="Nombre, CI, celular o email" value={busqueda} onChange={e => setBusqueda(e.target.value)} aria-label="Buscar inscrita" />
+          <button className="ad-btn is-sm is-primary">Buscar</button>
         </form>
-      </div>
-      {error && <p className="dash-error" style={{ margin: '1rem 2rem' }}>{error}</p>}
-      {cargando ? <div className="dash-loading">Cargando…</div> : filas.length === 0 ? (
-        <div className="dash-empty"><p>{busqueda ? 'Nadie coincide con esa búsqueda.' : 'Todavía no hay inscritas con el pago validado.'}</p></div>
+      </header>
+      {error && <p className="ad-alert" role="alert"><Icon name="alert" />{error}</p>}
+      {cargando ? <div className="ad-skel ad-skel-table" /> : filas.length === 0 ? (
+        <div className="ad-chart-empty"><Icon name="users" size={22} /><p>{busqueda ? 'Nadie coincide con esa búsqueda.' : 'Todavía no hay inscritas con el pago validado.'}</p></div>
       ) : (
         <>
-          <div className="table-wrap">
-            <table className="dash-table">
-              <thead><tr><th>Corredora</th><th>CI</th><th>Celular</th><th>Dorsal</th><th>Total</th><th>Recibo</th></tr></thead>
+          <div className="ad-table-wrap">
+            <table className="dash-table ad-table">
+              <thead><tr><th>Corredora</th><th>CI</th><th>Celular</th><th>Dorsal</th><th>Total</th><th><span className="sr-only">Recibo</span></th></tr></thead>
               <tbody>
                 {filas.map(r => (
                   <tr key={r.id}>
-                    <td><div className="cell-name">{r.runner}</div><div className="cell-sub">{r.email}</div></td>
+                    <td><div className="ad-person"><span className="ad-avatar" aria-hidden="true">{iniciales(r.runner)}</span><div><div className="cell-name">{r.runner}</div><div className="cell-sub">{r.email}</div></div></div></td>
                     <td>{r.docId || '—'}</td>
                     <td>{r.phone || '—'}</td>
-                    <td>{r.bibNumber || '—'}</td>
-                    <td>{bs(r.totalCents)}</td>
-                    <td><button className="btn-outline-sm" onClick={() => setRecibo({
+                    <td>{r.bibNumber ? <span className="ad-bib">{r.bibNumber}</span> : '—'}</td>
+                    <td className="ad-num">{bs(r.totalCents)}</td>
+                    <td><button className="ad-btn is-sm is-ghost" onClick={() => setRecibo({
                       receiptNumber: String(r.id).slice(-8).toUpperCase(), paymentId: r.id, donor: r.runner, concept: r.marathon,
                       amountCents: r.totalCents, currency: 'Bolivianos', currencySymbol: 'Bs', date: new Date(),
-                    })}>Recibo</button></td>
+                    })}><Icon name="receipt" size={16} />Recibo</button></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <div className="pagination">
-            <button className="btn-outline-sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)} aria-label="Página anterior">←</button>
-            <span>Página {page} de {meta.totalPages}</span>
-            <button className="btn-outline-sm" disabled={page >= meta.totalPages} onClick={() => setPage(p => p + 1)} aria-label="Página siguiente">→</button>
-          </div>
+          <footer className="ad-pager">
+            <span>Página <b>{page}</b> de {meta.totalPages}</span>
+            <div>
+              <button className="ad-icon-btn" disabled={page <= 1} onClick={() => setPage(p => p - 1)} aria-label="Página anterior"><Icon name="chevron" style={{ transform: 'rotate(90deg)' }} /></button>
+              <button className="ad-icon-btn" disabled={page >= meta.totalPages} onClick={() => setPage(p => p + 1)} aria-label="Página siguiente"><Icon name="chevron" style={{ transform: 'rotate(-90deg)' }} /></button>
+            </div>
+          </footer>
         </>
       )}
       {recibo && <DonationReceipt data={recibo} onClose={() => setRecibo(null)} />}
-    </div>
+    </section>
   )
 }
 
@@ -594,22 +839,24 @@ function NuevaCarrera({ token, onCerrar, onCreada }) {
 
   return (
     <div className="modal-overlay" onClick={onCerrar}>
-      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="pc-nueva" onClick={e => e.stopPropagation()}>
+      <div className="modal ad-modal" role="dialog" aria-modal="true" aria-labelledby="pc-nueva" onClick={e => e.stopPropagation()}>
         <div className="modal-header"><h2 id="pc-nueva">Nueva carrera</h2><button className="modal-close" onClick={onCerrar} aria-label="Cerrar">×</button></div>
         <form onSubmit={crear}>
           <div className="modal-body">
-            <p className="pc-hint" style={{ marginBottom: '1rem' }}>Lo básico para crearla. El resto lo completás después en Editar carrera; queda en borrador hasta que la publiques.</p>
-            <label className="form-label">Nombre<input className="form-input" name="name" required autoFocus value={f.name} onChange={campo} /></label>
-            <label className="form-label">Ciudad<input className="form-input" name="city" required value={f.city} onChange={campo} /></label>
-            <label className="form-label">Largada<input className="form-input" type="datetime-local" name="startsAt" required value={f.startsAt} onChange={campo} /></label>
-            <label className="form-label">Distancia (m)<input className="form-input" type="number" min="1" name="distanceMeters" required value={f.distanceMeters} onChange={campo} /></label>
-            <label className="form-label">Cupos<input className="form-input" type="number" min="1" name="capacity" required value={f.capacity} onChange={campo} /></label>
-            <label className="form-label">Precio (Bs)<input className="form-input" type="number" min="0" step="0.01" name="price" required value={f.price} onChange={campo} /></label>
-            {error && <p className="dash-error">{error}</p>}
+            <p className="ad-hint">Lo básico para crearla. El resto lo completás después en Editar carrera; queda en borrador hasta que la publiques.</p>
+            <div className="ad-grid">
+              <Campo label="Nombre" span><input name="name" required autoFocus value={f.name} onChange={campo} /></Campo>
+              <Campo label="Ciudad"><input name="city" required value={f.city} onChange={campo} /></Campo>
+              <Campo label="Largada"><input type="datetime-local" name="startsAt" required value={f.startsAt} onChange={campo} /></Campo>
+              <Campo label="Distancia"><span className="ad-affix is-end"><input type="number" min="1" name="distanceMeters" required value={f.distanceMeters} onChange={campo} /><em>m</em></span></Campo>
+              <Campo label="Cupos"><input type="number" min="1" name="capacity" required value={f.capacity} onChange={campo} /></Campo>
+              <Campo label="Precio" span><span className="ad-affix"><em>Bs</em><input type="number" min="0" step="0.01" name="price" required value={f.price} onChange={campo} /></span></Campo>
+            </div>
+            {error && <p className="ad-alert" role="alert"><Icon name="alert" />{error}</p>}
           </div>
           <div className="modal-footer">
-            <button type="button" className="btn-ghost-sm" onClick={onCerrar}>Cancelar</button>
-            <button className="btn-primary-sm" disabled={guardando}>{guardando ? 'Creando…' : 'Crear carrera'}</button>
+            <button type="button" className="ad-btn is-ghost" onClick={onCerrar}>Cancelar</button>
+            <button className="ad-btn is-primary" disabled={guardando}>{guardando ? 'Creando…' : 'Crear carrera'}</button>
           </div>
         </form>
       </div>
