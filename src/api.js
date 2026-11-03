@@ -472,6 +472,20 @@ export async function deleteRole(token, key) {
   return fetchApi(`/admin/roles/${key}`, { method: 'DELETE', token })
 }
 
+// PLATAFORMA: API de pagos y validador de cada carrera
+export async function getPlataforma(token) {
+  return fetchApi('/admin/plataforma', { token })
+}
+
+export async function setPaymentApi(token, enabled) {
+  return fetchApi('/admin/plataforma/payment-api', { method: 'PUT', body: JSON.stringify({ enabled }), token })
+}
+
+// userId: 'api-pasarela', el id de un organizador, o null (cualquiera que valide cobros)
+export async function setMarathonValidator(token, marathonId, userId) {
+  return fetchApi(`/admin/plataforma/marathons/${marathonId}/validator`, { method: 'PUT', body: JSON.stringify({ userId }), token })
+}
+
 // AUDITORIA: { data, meta: { total, page, pageSize } }
 export async function getAudit(token, { q = '', resultado = '', page = 1, pageSize = 30 } = {}) {
   const params = new URLSearchParams({ page, pageSize })

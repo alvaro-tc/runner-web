@@ -26,6 +26,9 @@ export default function PanelCobros({ sesion, puede }) {
   const [error, setError] = useState('')
   const [sel, setSel] = useState(null)
   const [recibo, setRecibo] = useState(null)
+  // La validacion de cada carrera puede estar asignada a la API o a otro organizador:
+  // entonces solo se mira. El backend lo vuelve a comprobar.
+  const meToca = p => valida && !p.byApi && (!p.validatorId || p.validatorId === sesion.user.id)
 
   async function cargar(p = page) {
     setCargando(true); setError('')
@@ -94,10 +97,10 @@ export default function PanelCobros({ sesion, puede }) {
                         <td data-l="Monto" className="ad-num">{bs(p.amountCents)}</td>
                         <td data-l="Método">{METODO[p.method] || p.method}</td>
                         <td data-l="Estado"><span className={`ad-pill ${ec}`}>{et}</span>
-                          {p.status === 'pending' && <div className="cell-sub">{p.proofId ? 'Comprobante por revisar' : p.proofStatus === 'rejected' ? 'Comprobante rechazado' : 'Sin comprobante'}</div>}</td>
-                        <td data-l="Validado por">{p.validatedBy || '—'}</td>
+                          {p.status === 'pending' && <div className="cell-sub">{p.byApi ? 'Esperando a la API' : p.proofId ? 'Comprobante por revisar' : p.proofStatus === 'rejected' ? 'Comprobante rechazado' : 'Sin comprobante'}</div>}</td>
+                        <td data-l="Validado por">{p.validatedBy || '—'}{p.status === 'pending' && p.validator && <div className="cell-sub">Asignado a {p.validator}</div>}</td>
                         <td className="ad-row-actions">
-                          <button className={`ad-btn is-sm${p.status === 'pending' && valida ? ' is-primary' : ''}`} onClick={() => setSel(p)}>{p.status === 'pending' && valida ? 'Validar' : 'Ver'}</button>
+                          <button className={`ad-btn is-sm${p.status === 'pending' && meToca(p) ? ' is-primary' : ''}`} onClick={() => setSel(p)}>{p.status === 'pending' && meToca(p) ? 'Validar' : 'Ver'}</button>
                         </td>
                       </tr>
                     )
@@ -116,7 +119,7 @@ export default function PanelCobros({ sesion, puede }) {
         )}
       </section>
 
-      {sel && <ModalCobro token={token} pago={sel} valida={valida} onCerrar={() => setSel(null)} onListo={(r) => { setSel(null); cargar(page); if (r) setRecibo(r) }} />}
+      {sel && <ModalCobro token={token} pago={sel} valida={meToca(sel)} onCerrar={() => setSel(null)} onListo={(r) => { setSel(null); cargar(page); if (r) setRecibo(r) }} />}
       {recibo && <DonationReceipt data={recibo} onClose={() => setRecibo(null)} />}
     </div>
   )
@@ -128,6 +131,7 @@ function ModalCobro({ token, pago, valida, onCerrar, onListo }) {
   const [error, setError] = useState('')
   const [img, setImg] = useState('cargando')
   const pendiente = pago.status === 'pending' && valida
+  const soloVer = pago.status === 'pending' && !valida && pago.validator
 
   async function aprobar() {
     setGuardando(true); setError('')
@@ -148,7 +152,7 @@ function ModalCobro({ token, pago, valida, onCerrar, onListo }) {
   const datos = [
     ['Monto', bs(pago.amountCents)], ['Carrera', pago.marathon], ['CI', pago.runnerCi], ['Celular', pago.runnerPhone],
     ['Email', pago.runnerEmail], ['Método', METODO[pago.method] || pago.method], ['Referencia', pago.proofReference || 'No indicada'],
-    ['Fecha', new Date(pago.createdAt).toLocaleString('es-BO')], ['Validado por', pago.validatedBy], ['Nota', pago.proofNote],
+    ['Fecha', new Date(pago.createdAt).toLocaleString('es-BO')], ['Validado por', pago.validatedBy], ['Asignado a', pago.validator], ['Nota', pago.proofNote],
   ].filter(([, v]) => v)
 
   // Portal a <body>: ningun ancestro animado puede atrapar el overlay fijo.
@@ -176,6 +180,7 @@ function ModalCobro({ token, pago, valida, onCerrar, onListo }) {
                 <textarea rows="2" value={nota} onChange={e => setNota(e.target.value)} placeholder="Ej.: el monto no coincide con el extracto" />
               </label>
             )}
+            {soloVer && <p className="ad-alert" role="note"><Icon name="info" />{pago.byApi ? 'Este cobro lo valida la API de pagos automáticamente.' : `La validación de esta carrera está asignada a ${pago.validator}.`}</p>}
             {error && <p className="ad-alert" role="alert"><Icon name="alert" />{error}</p>}
           </div>
         </div>

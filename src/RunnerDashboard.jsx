@@ -377,6 +377,14 @@ function RegistrationCard({ reg, me, token, onChange }) {
 
   const qr = current?.methodDetails?.manualQr
 
+  // QR de la API de pagos: se confirma solo, así que se sondea mientras siga pendiente
+  const auto = current?.status === 'pending' && qr?.auto
+  useEffect(() => {
+    if (!auto) return
+    const t = setInterval(onChange, 5000)
+    return () => clearInterval(t)
+  }, [auto]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const [receiptData, setReceiptData] = useState(null)
   const openReceipt = (p) => setReceiptData({
     receiptNumber: String(p.id).slice(-8).toUpperCase(),
@@ -408,7 +416,7 @@ function RegistrationCard({ reg, me, token, onChange }) {
             <div className="qr-instructions">
               <PaymentQr payload={qr.payload} imageUrl={qr.imageUrl} />
               <div>
-                <h3>Realiza el pago y sube tu comprobante</h3>
+                <h3>{qr.auto ? 'Realiza el pago: se confirma solo' : 'Realiza el pago y sube tu comprobante'}</h3>
                 <p>{qr.instructions || 'Paga desde tu aplicación bancaria usando este QR.'}</p>
                 <p><strong>Referencia:</strong> {qr.reference}</p>
                 <p><strong>Monto:</strong> {money(current.amountCents, current.currency)}</p>
@@ -420,11 +428,15 @@ function RegistrationCard({ reg, me, token, onChange }) {
                 <p>{current.proof.note || 'El organizador solicitó un nuevo comprobante.'}</p>
               </div>
             )}
-            <form className="proof-form" onSubmit={upload}>
-              <label>Comprobante de pago<input type="file" name="file" accept="image/*" required /></label>
-              <label>Número de transacción (opcional)<input name="reference" maxLength={80} /></label>
-              <button className="btn-primary" type="submit" disabled={busy}>{busy ? 'Subiendo…' : 'Enviar comprobante'}</button>
-            </form>
+            {qr.auto ? (
+              <div className="notice notice-warning">Esperando el pago… Esta pantalla se actualiza sola cuando el banco lo confirme.</div>
+            ) : (
+              <form className="proof-form" onSubmit={upload}>
+                <label>Comprobante de pago<input type="file" name="file" accept="image/*" required /></label>
+                <label>Número de transacción (opcional)<input name="reference" maxLength={80} /></label>
+                <button className="btn-primary" type="submit" disabled={busy}>{busy ? 'Subiendo…' : 'Enviar comprobante'}</button>
+              </form>
+            )}
           </>
         )}
 

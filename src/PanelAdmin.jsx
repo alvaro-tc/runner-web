@@ -5,6 +5,7 @@ import PanelCobros from './PanelCobros'
 import PanelUsuarios from './PanelUsuarios'
 import PanelRoles from './PanelRoles'
 import PanelAuditoria from './PanelAuditoria'
+import PanelPlataforma from './PanelPlataforma'
 import { getMyAccess } from './api'
 import './admin.css'
 
@@ -16,6 +17,7 @@ const MODULOS = [
   { key: 'usuarios', label: 'Usuarios', icon: 'users', permiso: 'usuarios.ver', Vista: PanelUsuarios },
   { key: 'roles', label: 'Roles y permisos', corto: 'Roles', icon: 'key', permiso: 'roles.gestionar', Vista: PanelRoles },
   { key: 'auditoria', label: 'Auditoría', icon: 'shield', permiso: 'auditoria.ver', Vista: PanelAuditoria },
+  { key: 'plataforma', label: 'Plataforma', icon: 'qr', permiso: 'plataforma.gestionar', Vista: PanelPlataforma },
 ]
 
 const iniciales = n => (n || '?').split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase()
