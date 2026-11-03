@@ -10,7 +10,8 @@ import Landing, { PasosInscripcion } from './Landing'
 function leerSesionGuardada() {
   try {
     const raw = localStorage.getItem('auth.sesion')
-    return raw ? JSON.parse(raw) : null
+    const s = raw ? JSON.parse(raw) : null
+    return s?.user ? s : null // una sesion vieja/corrupta sin user dejaba la pagina en blanco
   } catch {
     return null
   }
