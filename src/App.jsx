@@ -1,10 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Header from './Header'
 import Login from './Login'
 import Register from './Register'
-import AdminDashboard from './AdminDashboard'
-import PanelCarreras from './PanelCarreras'
-import PanelOsi from './PanelOsi'
+import PanelAdmin from './PanelAdmin'
 import RunnerDashboard from './RunnerDashboard'
 import { esStaff } from './roles'
 import Landing, { PasosInscripcion } from './Landing'
@@ -37,6 +35,13 @@ export default function App() {
     setSeccion('inicio')
     setVista('login')
   }
+
+  // api.js avisa cuando el refresh token tambien vencio: se vuelve al login en vez de dejar el panel roto
+  useEffect(() => {
+    const vencida = () => { cerrarSesion(); setSeccion('auth') }
+    window.addEventListener('auth:expirada', vencida)
+    return () => window.removeEventListener('auth:expirada', vencida)
+  }, [])
 
   // Intercepta las órdenes del Header para enrutar correctamente
   function manejarNavegacion(nuevaSeccion) {
@@ -74,14 +79,11 @@ export default function App() {
       )
     }
 
-    if (sesion.user.role === 'admin') return <PanelCarreras sesion={sesion} />
-    if (sesion.user.role === 'osi') return <PanelOsi sesion={sesion} />
-    if (esStaff(sesion.user.role)) {
-      return <AdminDashboard sesion={sesion} onLogout={cerrarSesion} />
-    }
-
     return <RunnerDashboard sesion={sesion} onLogout={cerrarSesion} />
   }
+
+  // El equipo tiene su propio panel con marca, módulos y salida: sin la barra del sitio
+  if (sesion && esStaff(sesion.user.role)) return <PanelAdmin sesion={sesion} onLogout={cerrarSesion} />
 
   return (
     <div className="page">

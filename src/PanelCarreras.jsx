@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import DonationReceipt from './components/DonationReceipt'
 import { DailyChart, Donut, Funnel, HBars, Icon, Sparkline } from './components/AdminCharts'
-import './admin.css'
 import {
   getAdminMarathons,
   getAdminMarathon,
@@ -96,11 +95,15 @@ function Miniatura({ carrera, size = 40 }) {
   )
 }
 
-export default function PanelCarreras({ sesion }) {
+// Cada pestaña con el permiso que la abre. Un veedor (carreras.ver + inscritas.ver) solo ve Inscritas.
+const VISTAS_PERMISO = { resumen: 'resumen.ver', editar: 'carreras.editar', inscritas: 'inscritas.ver' }
+
+export default function PanelCarreras({ sesion, puede = () => true }) {
   const token = sesion.accessToken
+  const vistas = VISTAS.filter(([k]) => puede(VISTAS_PERMISO[k]))
   const [carreras, setCarreras] = useState([])
   const [selId, setSelId] = useState(leerGuardada)
-  const [tab, setTab] = useState('resumen')
+  const [tabPedida, setTab] = useState('resumen')
   const [detalle, setDetalle] = useState(null)
   const [stats, setStats] = useState(null)
   const [statsError, setStatsError] = useState('')
@@ -109,6 +112,8 @@ export default function PanelCarreras({ sesion }) {
   const [nueva, setNueva] = useState(false)
 
   const sel = carreras.find(c => c.id === selId)
+  const tab = vistas.some(v => v[0] === tabPedida) ? tabPedida : vistas[0]?.[0]
+  const editor = puede('carreras.editar')
 
   async function cargarCarreras() {
     try {
@@ -122,7 +127,8 @@ export default function PanelCarreras({ sesion }) {
   async function cargarCarrera(id = selId) {
     if (!id) return
     setStatsError('')
-    getMarathonStats(token, id).then(setStats, e => { setStats(null); setStatsError(e.message) })
+    if (puede('resumen.ver')) getMarathonStats(token, id).then(setStats, e => { setStats(null); setStatsError(e.message) })
+    if (!editor) return
     try { setDetalle(await getAdminMarathon(token, id)) }
     catch (e) { setError(e.message) }
   }
@@ -140,61 +146,66 @@ export default function PanelCarreras({ sesion }) {
     await Promise.all([cargarCarreras(), cargarCarrera()])
   }
 
-  if (cargando) return <div className="ad ad-loading"><span className="ad-spinner" /> Cargando carreras…</div>
+  if (cargando) return <div className="ad-loading"><span className="ad-spinner" /> Cargando carreras…</div>
 
-  const vista = VISTAS.find(v => v[0] === tab)
+  const vista = vistas.find(v => v[0] === tab)
+  const estado = sel && (sel.resolved || sel.registrationStatus)
 
   return (
-    <div className="ad">
-      <aside className="ad-side">
-        <SelectorCarrera carreras={carreras} sel={sel} onElegir={id => setSelId(id)} onNueva={() => setNueva(true)} />
-        {sel && (
-          <nav className="ad-nav" aria-label="Secciones de la carrera">
-            {VISTAS.map(([k, l, ic]) => (
-              <button key={k} className={`ad-nav-item${tab === k ? ' is-on' : ''}`} aria-current={tab === k ? 'page' : undefined} onClick={() => setTab(k)}>
-                <Icon name={ic} />{l}
+    <>
+      <div className="ad-toolbar">
+        <SelectorCarrera carreras={carreras} sel={sel} onElegir={id => setSelId(id)} onNueva={editor ? () => setNueva(true) : null} />
+        {sel && vistas.length > 1 && (
+          <div className="ad-tabs" role="tablist" aria-label="Secciones de la carrera">
+            {vistas.map(([k, l, ic]) => (
+              <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'is-on' : ''} onClick={() => setTab(k)}>
+                <Icon name={ic} size={16} />{l}
                 {k === 'inscritas' && stats && <span className="ad-nav-n">{num(stats.confirmed)}</span>}
               </button>
             ))}
-          </nav>
-        )}
-        {sel && <EstadoLateral carrera={sel} />}
-      </aside>
-
-      <main className="ad-main">
-        {error && <p className="ad-alert" role="alert"><Icon name="alert" />{error}<button onClick={() => setError('')} aria-label="Cerrar aviso"><Icon name="x" size={16} /></button></p>}
-
-        {!sel ? (
-          <div className="ad-card ad-empty">
-            <span className="ad-empty-ic"><Icon name="flag" size={28} /></span>
-            <h2>Creá la primera carrera</h2>
-            <p>Con la carrera creada vas a ver sus inscritas, lo recaudado y las visitas.</p>
-            <button className="ad-btn is-primary" onClick={() => setNueva(true)}><Icon name="plus" />Nueva carrera</button>
           </div>
-        ) : (
-          <>
-            <header className="ad-head">
-              <div>
-                <p className="ad-eyebrow">{vista[1]}</p>
-                <h1>{sel.name}</h1>
-                <p className="ad-head-meta">
-                  <span><Icon name="calendar" size={15} />{fecha(sel.startsAt, { weekday: 'long', day: 'numeric', month: 'long' })}</span>
-                  <span><Icon name="pin" size={15} />{sel.city}</span>
-                  <span className={`ad-pill ${sel.rehearsalOfId ? 'is-gold' : sel.published ? 'is-ok' : ''}`}>{sel.rehearsalOfId ? 'Ensayo' : sel.published ? 'Publicada' : 'Borrador'}</span>
-                </p>
-              </div>
-              <button className="ad-btn" onClick={() => downloadRegistrantsCsv(token, sel).catch(e => setError(e.message))}><Icon name="download" />Exportar inscritas</button>
-            </header>
-
-            {tab === 'resumen' && <Resumen carrera={sel} stats={stats} statsError={statsError} />}
-            {tab === 'editar' && (detalle
-              ? <EditorCarrera key={detalle.id} token={token} carrera={detalle} onCambio={setDetalle} onGuardado={refrescar}
-                  onEliminada={() => { setSelId(''); cargarCarreras(); setTab('resumen') }} onError={setError} />
-              : <div className="ad-loading"><span className="ad-spinner" /> Cargando carrera…</div>)}
-            {tab === 'inscritas' && <Inscritas key={sel.id} token={token} carrera={sel} />}
-          </>
         )}
-      </main>
+      </div>
+
+      {error && <p className="ad-alert" role="alert"><Icon name="alert" />{error}<button onClick={() => setError('')} aria-label="Cerrar aviso"><Icon name="x" size={16} /></button></p>}
+
+      {!sel ? (
+        <div className="ad-card ad-empty">
+          <span className="ad-empty-ic"><Icon name="flag" size={28} /></span>
+          <h2>{editor ? 'Creá la primera carrera' : 'Todavía no hay carreras'}</h2>
+          <p>Con la carrera creada vas a ver sus inscritas, lo recaudado y las visitas.</p>
+          {editor && <button className="ad-btn is-primary" onClick={() => setNueva(true)}><Icon name="plus" />Nueva carrera</button>}
+        </div>
+      ) : !vista ? (
+        <div className="ad-card ad-empty">
+          <span className="ad-empty-ic"><Icon name="lock" size={28} /></span>
+          <h2>Sin secciones disponibles</h2>
+          <p>Tu rol puede ver la carrera pero ninguna de sus secciones.</p>
+        </div>
+      ) : (
+        <>
+          <header className="ad-head">
+            <div>
+              <p className="ad-eyebrow">{vista[1]}</p>
+              <h1>{sel.name}</h1>
+              <p className="ad-head-meta">
+                <span><Icon name="calendar" size={15} />{fecha(sel.startsAt, { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+                <span><Icon name="pin" size={15} />{sel.city}</span>
+                <span className={`ad-pill ${sel.rehearsalOfId ? 'is-gold' : sel.published ? 'is-ok' : ''}`}>{sel.rehearsalOfId ? 'Ensayo' : sel.published ? 'Publicada' : 'Borrador'}</span>
+                {estado && <span className={`ad-pill ${estado === 'closed' || estado === 'full' ? '' : 'is-ok'}`}>{ESTADO_INSCRIPCION[estado] || estado}</span>}
+              </p>
+            </div>
+            {puede('inscritas.exportar') && <button className="ad-btn" onClick={() => downloadRegistrantsCsv(token, sel).catch(e => setError(e.message))}><Icon name="download" />Exportar inscritas</button>}
+          </header>
+
+          {tab === 'resumen' && <Resumen carrera={sel} stats={stats} statsError={statsError} />}
+          {tab === 'editar' && (detalle
+            ? <EditorCarrera key={detalle.id} token={token} carrera={detalle} onCambio={setDetalle} onGuardado={refrescar}
+                onEliminada={() => { setSelId(''); cargarCarreras(); setTab('resumen') }} onError={setError} />
+            : <div className="ad-loading"><span className="ad-spinner" /> Cargando carrera…</div>)}
+          {tab === 'inscritas' && <Inscritas key={sel.id} token={token} carrera={sel} />}
+        </>
+      )}
 
       {nueva && (
         <NuevaCarrera token={token} onCerrar={() => setNueva(false)} onCreada={async m => {
@@ -204,7 +215,7 @@ export default function PanelCarreras({ sesion }) {
           setTab('editar')
         }} />
       )}
-    </div>
+    </>
   )
 }
 
@@ -231,7 +242,6 @@ function SelectorCarrera({ carreras, sel, onElegir, onNueva }) {
 
   return (
     <div className="ad-switch" ref={caja}>
-      <p className="ad-side-label">Carrera</p>
       <button className="ad-switch-btn" aria-haspopup="listbox" aria-expanded={abierto} onClick={() => setAbierto(a => !a)}>
         {sel ? <Miniatura carrera={sel} /> : <span className="ad-thumb"><Icon name="flag" /></span>}
         <span className="ad-switch-txt">
@@ -268,20 +278,9 @@ function SelectorCarrera({ carreras, sel, onElegir, onNueva }) {
               </div>
             ))}
           </div>
-          <button className="ad-pop-new" onClick={() => { setAbierto(false); onNueva() }}><Icon name="plus" />Nueva carrera</button>
+          {onNueva && <button className="ad-pop-new" onClick={() => { setAbierto(false); onNueva() }}><Icon name="plus" />Nueva carrera</button>}
         </div>
       )}
-    </div>
-  )
-}
-
-function EstadoLateral({ carrera }) {
-  const d = faltan(carrera.startsAt)
-  const abiertas = carrera.registrationStatus !== 'closed' && carrera.registrationStatus !== 'full'
-  return (
-    <div className="ad-side-card">
-      <p className="ad-side-count"><strong>{d > 0 ? d : 0}</strong>{d > 1 ? 'días para la largada' : d === 1 ? 'día para la largada' : d === 0 ? 'Hoy es la largada' : 'Carrera finalizada'}</p>
-      <p className={`ad-side-state${abiertas ? ' is-on' : ''}`}><i />{ESTADO_INSCRIPCION[carrera.registrationStatus] || carrera.registrationStatus}</p>
     </div>
   )
 }
@@ -351,13 +350,14 @@ function Resumen({ carrera, stats, statsError }) {
           </header>
           {!s ? <div className="ad-skel ad-skel-list" /> : (
             <>
+              {/* Sin visitas (borrador, o carrera vista solo desde la app) el primer paso en 0 rompe el embudo */}
               <Funnel pasos={[
-                { label: 'Vieron la carrera', value: s.marathonViews },
+                ...(s.marathonViews ? [{ label: 'Vieron la carrera', value: s.marathonViews }] : []),
                 { label: 'Empezaron a inscribirse', value: iniciadas },
                 { label: 'Llegaron al pago', value: alPago },
                 { label: 'Confirmadas', value: s.confirmed },
               ]} />
-              <p className="ad-foot"><Icon name="trend" size={15} />Conversión total <b>{s.marathonViews ? ((s.confirmed / s.marathonViews) * 100).toFixed(1) : '—'}%</b> · {num(s.pageViews)} visitas al inicio</p>
+              <p className="ad-foot"><Icon name="trend" size={15} />Conversión total <b>{s.marathonViews ? `${((s.confirmed / s.marathonViews) * 100).toFixed(1)}%` : '—'}</b> · {num(s.pageViews)} visitas al inicio</p>
             </>
           )}
         </section>

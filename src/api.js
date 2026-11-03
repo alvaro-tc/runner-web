@@ -11,17 +11,64 @@ function deviceId() {
   return id
 }
 
+// La sesion vive en localStorage (App la guarda ahi). El access token dura 15 min:
+// al vencer se renueva con el refresh token y se reintenta el pedido.
+const LLAVE_SESION = 'auth.sesion'
+const leerSesion = () => { try { return JSON.parse(localStorage.getItem(LLAVE_SESION)) } catch { return null } }
+let renovando = null
+
+// Un solo refresh aunque fallen varios pedidos, y aunque haya varias pestañas:
+// el refresh rota y reusar uno ya rotado hace que el backend cierre la sesion.
+// El lock del navegador es compartido entre pestañas; dentro se relee el storage
+// por si otra pestaña ya renovo mientras se esperaba.
+function renovarToken(vencido) {
+  const tarea = async () => {
+    const s = leerSesion()
+    if (!s?.refreshToken) return null
+    if (s.accessToken && s.accessToken !== vencido) return s.accessToken // ya renovo otra pestaña
+    let res
+    try {
+      res = await fetch(`${BASE}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken: s.refreshToken, deviceId: deviceId() }),
+      })
+    } catch { return null } // sin red: no se cierra la sesion
+    const par = (await res.json().catch(() => null))?.data
+    if (!res.ok || !par?.accessToken) {
+      localStorage.removeItem(LLAVE_SESION)
+      window.dispatchEvent(new Event('auth:expirada'))
+      return null
+    }
+    localStorage.setItem(LLAVE_SESION, JSON.stringify({ ...s, ...par, user: par.user || s.user }))
+    return par.accessToken
+  }
+  renovando ??= (navigator.locks ? navigator.locks.request('auth.refresh', tarea) : tarea())
+    .finally(() => { renovando = null })
+  return renovando
+}
+
+// fetch con Authorization: usa el token mas nuevo guardado (los componentes
+// guardan el del login) y ante un 401 renueva una vez y reintenta.
+async function fetchConToken(url, init, token) {
+  const pedir = t => fetch(url, { ...init, headers: { ...init.headers, ...(t && { Authorization: `Bearer ${t}` }) } })
+  const t = token && (leerSesion()?.accessToken || token)
+  const res = await pedir(t)
+  if (res.status !== 401 || !t) return res
+  const nuevo = await renovarToken(t)
+  return nuevo ? pedir(nuevo) : res
+}
+
 async function fetchApi(path, options = {}) {
   const { token, withMeta, ...fetchOptions } = options
   const headers = { ...(fetchOptions.headers || {}) }
   if (!(fetchOptions.body instanceof FormData)) {
     headers['Content-Type'] = 'application/json'
   }
-  if (token) headers['Authorization'] = `Bearer ${token}`
 
   let res
   try {
-    res = await fetch(`${BASE}${path}`, { ...fetchOptions, headers })
+    res = await fetchConToken(`${BASE}${path}`, { ...fetchOptions, headers }, token)
   } catch {
     throw new Error('No pudimos conectar con el servidor. Revisá tu conexión e intentá de nuevo.')
   }
@@ -188,9 +235,7 @@ export async function saveManualPodium(token, marathonId, results) {
 
 // El CSV llega como archivo, fuera del sobre { data }: por eso no pasa por fetchApi
 export async function downloadRegistrantsCsv(token, marathon) {
-  const res = await fetch(`${BASE}/admin/marathons/${marathon.id}/registrants.csv`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
+  const res = await fetchConToken(`${BASE}/admin/marathons/${marathon.id}/registrants.csv`, {}, token)
   if (!res.ok) {
     const json = await res.json().catch(() => null)
     throw new Error(json?.error?.message || `Error ${res.status}`)
@@ -209,9 +254,7 @@ export async function downloadPaymentsCsv(token, { q = '', status = '', marathon
   if (q) params.append('q', q)
   if (status) params.append('status', status)
   if (marathonId) params.append('marathonId', marathonId)
-  const res = await fetch(`${BASE}/admin/payments.csv?${params}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
+  const res = await fetchConToken(`${BASE}/admin/payments.csv?${params}`, {}, token)
   if (!res.ok) {
     const json = await res.json().catch(() => null)
     throw new Error(json?.error?.message || `Error ${res.status}`)
@@ -405,3 +448,34 @@ export async function rejectPaymentProof(proofId, note, token) {
 }
 
 export { BASE }
+
+// ROLES Y PERMISOS
+// Lo que puede hacer la sesion: el panel arma sus modulos con esto
+export async function getMyAccess(token) {
+  return fetchApi('/admin/me', { token })
+}
+
+// { modules: [{ key, name, description, permisos: [{ key, name, description }] }], roles: [...] }
+export async function getRoles(token) {
+  return fetchApi('/admin/roles', { token })
+}
+
+export async function createRole(token, data) {
+  return fetchApi('/admin/roles', { method: 'POST', body: JSON.stringify(data), token })
+}
+
+export async function updateRole(token, key, data) {
+  return fetchApi(`/admin/roles/${key}`, { method: 'PUT', body: JSON.stringify(data), token })
+}
+
+export async function deleteRole(token, key) {
+  return fetchApi(`/admin/roles/${key}`, { method: 'DELETE', token })
+}
+
+// AUDITORIA: { data, meta: { total, page, pageSize } }
+export async function getAudit(token, { q = '', resultado = '', page = 1, pageSize = 30 } = {}) {
+  const params = new URLSearchParams({ page, pageSize })
+  if (q) params.append('q', q)
+  if (resultado) params.append('resultado', resultado)
+  return fetchApi(`/admin/audit?${params}`, { token, withMeta: true })
+}

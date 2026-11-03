@@ -29,6 +29,13 @@ const ICONOS = {
   x: 'M18 6 6 18M6 6l12 12',
   heart: 'M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z',
   trend: 'M22 7 13.5 15.5l-5-5L2 17M16 7h6v6',
+  logout: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9',
+  key: 'M15.5 7.5 19 4m2-2-2 2 3 3-3.5 3.5-3-3M11.4 11.6a5.5 5.5 0 1 1-7.8 7.8 5.5 5.5 0 0 1 7.8-7.8Z',
+  lock: 'M5 11h14v10H5ZM8 11V7a4 4 0 0 1 8 0v4',
+  eye: 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z',
+  copy: 'M9 9h11v11H9ZM5 15H4V4h11v1',
+  refresh: 'M21 12a9 9 0 1 1-2.6-6.4M21 4v5h-5',
+  userPlus: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM19 8v6M22 11h-6',
 }
 
 export function Icon({ name, size = 18, ...rest }) {
@@ -71,11 +78,11 @@ export function DailyChart({ data, modo, formato }) {
   return (
     <figure className="ad-daily" aria-label={`${modo === 'dinero' ? 'Recaudado' : 'Inscritas'} por día, ${data.length} días`}>
       <div className="ad-daily-plot" onMouseLeave={() => setActivo(null)}>
-        <div className="ad-daily-grid" aria-hidden="true"><span /><span /><span /></div>
+        <div className="ad-daily-grid" aria-hidden="true"><span data-v={formato(max)} /><span data-v={formato(max / 2)} /><span /></div>
         <div className="ad-daily-bars">
           {data.map((p, i) => (
             <button key={p.date} type="button" className={`ad-bar${activo === i ? ' is-on' : ''}`}
-              style={{ '--h': `${(valores[i] / max) * 100}%` }}
+              style={{ '--h': `${(valores[i] / max) * 100}%`, '--i': i }}
               onMouseEnter={() => setActivo(i)} onFocus={() => setActivo(i)} onBlur={() => setActivo(null)}
               aria-label={`${fechaCorta(p.date)}: ${formato(valores[i])}, acumulado ${formato(acumulado[i])}`} />
           ))}
