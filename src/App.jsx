@@ -3,7 +3,7 @@ import Header from './Header'
 import Login from './Login'
 import Register from './Register'
 import PanelAdmin from './PanelAdmin'
-import RunnerDashboard from './RunnerDashboard'
+import RunnerPanel from './runner/RunnerPanel'
 import { esStaff } from './roles'
 import Landing, { PasosInscripcion } from './Landing'
 
@@ -80,11 +80,13 @@ export default function App() {
       )
     }
 
-    return <RunnerDashboard sesion={sesion} onLogout={cerrarSesion} />
+    return null
   }
 
   // El equipo tiene su propio panel con marca, módulos y salida: sin la barra del sitio
   if (sesion && esStaff(sesion.user.role)) return <PanelAdmin sesion={sesion} onLogout={cerrarSesion} />
+  // El corredor tambien tiene su panel con barra propia
+  if (sesion) return <RunnerPanel sesion={sesion} onLogout={cerrarSesion} />
 
   return (
     <div className="page">

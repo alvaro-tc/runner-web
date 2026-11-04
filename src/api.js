@@ -124,21 +124,77 @@ export async function getMarathonCategories(marathonId) {
   return fetchApi(`/marathons/${marathonId}/categories`)
 }
 
+// Los listados paginados por cursor llegan como arreglo; algunos viejos como { items }
+export const listaDe = r => (Array.isArray(r) ? r : r?.items || [])
+
 // INSCRIPCIONES
-export async function createRegistration(marathonId, personalData, token, categoryId) {
-  const reg = await fetchApi('/registrations', {
+// POST es idempotente mientras la inscripcion siga en borrador o pendiente: reusa la misma
+export async function createRegistration(marathonId, personalData, token) {
+  return fetchApi('/registrations', {
     method: 'POST',
     body: JSON.stringify({ marathonId, personalData }),
-    token
+    token,
   })
-  if (categoryId) {
-    await fetchApi(`/registrations/${reg.id}/category-extras`, {
-      method: 'PATCH',
-      body: JSON.stringify({ categoryId }),
-      token,
-    })
+}
+
+export async function setRegistrationOptions(registrationId, categoryId, extras, token) {
+  return fetchApi(`/registrations/${registrationId}/category-extras`, {
+    method: 'PATCH',
+    body: JSON.stringify({ categoryId: categoryId || null, extras }),
+    token,
+  })
+}
+
+export async function getRegistration(registrationId, token) {
+  return fetchApi(`/registrations/${registrationId}`, { token })
+}
+
+export async function getPaymentProof(paymentId, token) {
+  return fetchApi(`/payments/${paymentId}/proof`, { token })
+}
+
+// Olvida la llave del cobro: el siguiente checkout abre uno nuevo (QR vencido)
+export function forgetCheckout(registrationId) {
+  sessionStorage.removeItem(`payment.idempotency.${registrationId}`)
+}
+
+// CORREDOR: carreras, recibo, entrenamientos y cuenta
+export const getMyRaces = token => fetchApi('/races/me', { token })
+export const getMyRacesSummary = token => fetchApi('/races/me/summary', { token })
+export const getHighlights = token => fetchApi('/users/me/highlights', { token })
+export const getWorkouts = (token, limit = 10) => fetchApi(`/workouts?limit=${limit}`, { token })
+export const getWorkoutWeeks = token => fetchApi('/workouts/grouped?by=week', { token })
+
+export async function downloadReceiptPdf(registrationId, token) {
+  const res = await fetchConToken(`${BASE}/races/${registrationId}/receipt/pdf`, {}, token)
+  if (!res.ok) {
+    const json = await res.json().catch(() => null)
+    throw new Error(json?.error?.message || `Error ${res.status}`)
   }
-  return reg
+  const url = URL.createObjectURL(await res.blob())
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `recibo-${registrationId.slice(-6)}.pdf`
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+export async function uploadAvatar(file, token) {
+  const body = new FormData()
+  body.append('file', file)
+  return fetchApi('/users/me/avatar', { method: 'POST', body, token })
+}
+
+export async function removeAvatar(token) {
+  return fetchApi('/users/me/avatar', { method: 'DELETE', token })
+}
+
+export async function changePassword(currentPassword, newPassword, token) {
+  return fetchApi('/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify({ currentPassword, newPassword }),
+    token,
+  })
 }
 
 export async function getMyRegistrations(token) {
