@@ -6,6 +6,8 @@ import {
   getRegistration, getRegistrationPayments, listaDe, setRegistrationOptions, uploadPaymentProof,
 } from '../api'
 import QrPago from './QrPago'
+import Arte from './Arte'
+import Telefono from './Telefono'
 import { bs, faltan, fecha, hora, km } from './util'
 
 const PASOS = [
@@ -14,8 +16,6 @@ const PASOS = [
   { key: 'resumen', label: 'Confirmar' },
   { key: 'pago', label: 'Pago' },
 ]
-const TALLAS = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
-const SANGRE = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-']
 const vencido = p => p?.expiresAt && new Date(p.expiresAt) <= new Date()
 
 // Inscripcion de punta a punta. `inscripcion` llega cuando se retoma una ya empezada.
@@ -68,7 +68,8 @@ export default function Inscripcion({ carrera, inscripcion: inicial, sesion, onC
   return createPortal(
     <div className="rn-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
       <div className="rn-sheet" role="dialog" aria-modal="true" aria-labelledby="rn-wiz-title" ref={caja}>
-        <header className="rn-sheet-hero" style={carrera.coverUrl ? { '--cover': `url("${carrera.coverUrl}")` } : undefined}>
+        <header className="rn-sheet-hero">
+          <Arte carrera={carrera} proporcion={3} />
           <button className="rn-close" onClick={onClose} aria-label="Cerrar inscripción"><Icon name="x" /></button>
           <span className="rn-kicker">Inscripción</span>
           <h2 id="rn-wiz-title">{carrera.name}</h2>
@@ -173,9 +174,9 @@ function SiNo({ legend, value, onChange, name }) {
 function PasoDatos({ sesion, previo, onListo, onError }) {
   const u = sesion.user
   const [f, setF] = useState(() => ({
-    fullName: u.name || '', docId: u.ci || '', phone: '', email: u.email || '',
-    emergencyContactName: '', emergencyContactPhone: '', bloodType: '', shirtSize: '',
-    knowsCam: null, acceptsDonorCall: null, ...(previo || {}),
+    fullName: u.name || '', docId: u.ci || '', phone: '+591', email: u.email || '',
+    knowsCam: null, acceptsDonorCall: null,
+    ...(previo && { fullName: previo.fullName, docId: previo.docId, phone: previo.phone, email: previo.email || '', knowsCam: previo.knowsCam, acceptsDonorCall: previo.acceptsDonorCall }),
   }))
   const [enviando, enviar] = useEnvio(onError)
   const set = k => e => setF({ ...f, [k]: e.target.value })
@@ -190,23 +191,16 @@ function PasoDatos({ sesion, previo, onListo, onError }) {
   return (
     <form className="rn-form" onSubmit={submit}>
       <h3>¿Quién corre?</h3>
-      <p className="rn-muted">Estos datos van en tu dorsal y en la lista oficial de la carrera.</p>
+      <p className="rn-muted">Estos datos van en la lista oficial de la carrera.</p>
       <div className="rn-grid2">
         <Campo label="Nombre completo" full><input required maxLength={160} value={f.fullName} onChange={set('fullName')} autoComplete="name" /></Campo>
         <Campo label="Carnet de identidad"><input required maxLength={40} value={f.docId} onChange={set('docId')} placeholder="1234567 LP" /></Campo>
-        <Campo label="Celular" hint="Por aquí te avisamos cambios de último momento"><input required type="tel" maxLength={40} value={f.phone} onChange={set('phone')} autoComplete="tel" placeholder="+591 70000000" /></Campo>
+        <div className="rn-field">
+          <label className="rn-field-label" htmlFor="rn-tel">Celular</label>
+          <Telefono id="rn-tel" required value={f.phone} onChange={phone => setF({ ...f, phone })} />
+          <small>Por aquí te avisamos cambios de último momento</small>
+        </div>
         <Campo label="Correo (opcional)" full><input type="email" maxLength={254} value={f.email} onChange={set('email')} autoComplete="email" /></Campo>
-        <Campo label="Talla de polera">
-          <select value={f.shirtSize} onChange={set('shirtSize')}><option value="">Elegir</option>{TALLAS.map(t => <option key={t}>{t}</option>)}</select>
-        </Campo>
-        <Campo label="Tipo de sangre">
-          <select value={f.bloodType} onChange={set('bloodType')}><option value="">No sé</option>{SANGRE.map(t => <option key={t}>{t}</option>)}</select>
-        </Campo>
-      </div>
-      <h4 className="rn-subtitle"><Icon name="heart" size={16} />Contacto de emergencia</h4>
-      <div className="rn-grid2">
-        <Campo label="Nombre"><input maxLength={160} value={f.emergencyContactName} onChange={set('emergencyContactName')} /></Campo>
-        <Campo label="Celular"><input type="tel" maxLength={40} value={f.emergencyContactPhone} onChange={set('emergencyContactPhone')} /></Campo>
       </div>
       <div className="rn-grid2">
         <SiNo name="knowsCam" legend="¿Conocés el trabajo del CAM?" value={f.knowsCam} onChange={v => setF({ ...f, knowsCam: v })} />
@@ -271,7 +265,7 @@ function PasoOpciones({ detalle, reg, onListo, onAtras, onError }) {
         </div>
       </>)}
       <div className="rn-actions">
-        <button type="button" className="rn-btn is-ghost" onClick={onAtras}>Atrás</button>
+        <button type="button" className="rn-btn is-outline" onClick={onAtras}>Atrás</button>
         <button className="rn-btn" disabled={enviando}>{enviando && <span className="rn-spin" />}Ver resumen<Icon name="arrow" size={18} /></button>
       </div>
     </form>
@@ -289,7 +283,7 @@ function PasoResumen({ reg, carrera, onListo, onAtras, onError }) {
       <div className="rn-summary">
         <div className="rn-summary-who">
           <span className="rn-avatar-fallback">{(pd.fullName || '?').slice(0, 1)}</span>
-          <div><strong>{pd.fullName}</strong><small>CI {pd.docId} · {pd.phone}{pd.shirtSize && ` · Talla ${pd.shirtSize}`}</small></div>
+          <div><strong>{pd.fullName}</strong><small>CI {pd.docId} · {pd.phone}</small></div>
         </div>
         <ul className="rn-lines">
           {(reg?.items || []).map((l, i) => (
@@ -304,7 +298,7 @@ function PasoResumen({ reg, carrera, onListo, onAtras, onError }) {
         <span>Leí y acepto los <a href="/terminos/" target="_blank" rel="noreferrer">Términos y condiciones</a> y declaro estar en condiciones físicas para correr.</span>
       </label>
       <div className="rn-actions">
-        <button type="button" className="rn-btn is-ghost" onClick={onAtras}>Atrás</button>
+        <button type="button" className="rn-btn is-outline" onClick={onAtras}>Atrás</button>
         <button className="rn-btn is-accent" disabled={!acepta || enviando}>{enviando ? <span className="rn-spin" /> : <Icon name="qr" size={18} />}Ir a pagar</button>
       </div>
     </form>
@@ -349,7 +343,7 @@ function PasoPago({ pago, token, onPagado, onNuevoQr, onError }) {
   return (
     <div className="rn-pay">
       <div className="rn-pay-qr">
-        <QrPago payload={qr.payload} imageUrl={qr.imageUrl} logoUrl={qr.logoUrl} nombre={`qr-${qr.reference || 'pago'}`} />
+        <QrPago payload={qr.payload} imageUrl={qr.imageUrl} logoUrl={qr.logoUrl} />
         {t && (
           <p className={`rn-timer${expiro ? ' is-bad' : t.total < 6e5 ? ' is-warn' : ''}`} aria-live="off">
             <Icon name="clock" size={15} />
@@ -371,7 +365,7 @@ function PasoPago({ pago, token, onPagado, onNuevoQr, onError }) {
           </div>
         )}
         <ol className="rn-howto">
-          <li>Abrí la app de tu banco y escaneá el QR (o guardalo y subilo desde la galería).</li>
+          <li>Abrí la app de tu banco y escaneá el QR.</li>
           {auto ? <li>Pagá el monto <b>exacto</b>: tu inscripción se confirma sola en segundos.</li>
             : <li>Escribí la glosa <b>{qr.reference}</b> en la transferencia.</li>}
           {!auto && <li>Subí la captura del comprobante aquí abajo.</li>}
@@ -407,12 +401,11 @@ function PasoListo({ reg, carrera, onVerRecibo, onClose }) {
       <svg className="rn-done-check" viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24" /><path d="M15 27l7 7 15-15" /></svg>
       <h3>{confirmada ? '¡Estás inscrito!' : 'Pago en revisión'}</h3>
       <p className="rn-muted">
-        {confirmada ? `Nos vemos en la largada de ${carrera.name}.` : 'Apenas validemos tu comprobante, tu inscripción queda confirmada y aparece tu dorsal.'}
+        {confirmada ? `Nos vemos en la largada de ${carrera.name}.` : 'Apenas validemos tu comprobante, tu inscripción queda confirmada.'}
       </p>
-      {confirmada && reg.bibNumber && <div className="rn-done-bib"><span>Tu dorsal</span><strong>{reg.bibNumber}</strong></div>}
       <div className="rn-actions is-center">
         {confirmada && <button className="rn-btn" onClick={onVerRecibo}><Icon name="receipt" size={18} />Ver mi recibo</button>}
-        <button className="rn-btn is-ghost" onClick={onClose}>Volver al panel</button>
+        <button className="rn-btn is-outline" onClick={onClose}>Volver al panel</button>
       </div>
     </div>
   )

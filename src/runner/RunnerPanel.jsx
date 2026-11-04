@@ -1,14 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { QRCodeSVG } from 'qrcode.react'
 import { Icon } from '../components/AdminCharts'
 import {
-  APK_URL, changePassword, getHighlights, getMarathon, getMarathons, getMe, getMyRaces, getMyRacesSummary,
-  getMyRegistrations, getWorkouts, getWorkoutWeeks, listaDe, removeAvatar, uploadAvatar,
+  changePassword, getHighlights, getMarathon, getMarathons, getMe, getMyRaces, getMyRacesSummary,
+  getMyRegistrations, getWorkouts, getWorkoutWeeks, listaDe, removeAvatar, updateMe, uploadAvatar,
 } from '../api'
 import Inscripcion from './Inscripcion'
 import Recibo from './Recibo'
-import { ESTADO_CARRERA, ESTADO_INSCRIPCION, bs, duracion, faltan, fecha, hora, km, puedeInscribirse, ritmo } from './util'
+import Arte from './Arte'
+import { StoreBadges } from '../Landing'
+import { ESTADO_CARRERA, ESTADO_INSCRIPCION, arte, bs, duracion, faltan, fecha, hora, km, puedeInscribirse, ritmo } from './util'
 import './runner.css'
 
 const TABS = [
@@ -78,28 +79,32 @@ export default function RunnerPanel({ sesion, onLogout }) {
         </div>
       </nav>
 
-      <header className="rn-hero">
-        <div className="rn-hero-mesh" aria-hidden="true" />
-        <div className="rn-wrap rn-hero-in">
-          <div className="rn-hello">
-            <Avatar url={avatar} nombre={nombre} size={72} ring />
-            <div>
-              <span className="rn-kicker">Panel del corredor</span>
-              <h1>Hola, {nombre.split(' ')[0]}</h1>
-            </div>
+      <header className="rn-wrap rn-hero">
+        <div className="rn-hello">
+          <Avatar url={avatar} nombre={nombre} size={64} ring />
+          <div>
+            <span className="rn-kicker">Panel del corredor</span>
+            <h1>Hola, {nombre.split(' ')[0]}</h1>
           </div>
-          <div className="rn-hero-stats">
-            <Stat label="Carreras corridas" valor={resumen?.racesCompleted ?? 0} />
-            <Stat label="Km en carreras" valor={((resumen?.totalDistanceMeters || 0) / 1000).toFixed(1)} />
-            <Stat label="Próximas" valor={resumen?.racesUpcoming ?? 0} />
-          </div>
-          {resumen?.nextRace && (
-            <div className="rn-next">
-              <span className="rn-kicker">Tu próxima largada · {resumen.nextRace.marathon.name}</span>
-              <Countdown iso={resumen.nextRace.marathon.startsAt} />
-            </div>
-          )}
         </div>
+        <div className="rn-hero-stats">
+          <Stat label="Carreras corridas" valor={resumen?.racesCompleted ?? 0} />
+          <Stat label="Km en carreras" valor={((resumen?.totalDistanceMeters || 0) / 1000).toFixed(1)} />
+          <Stat label="Próximas" valor={resumen?.racesUpcoming ?? 0} />
+        </div>
+        {resumen?.nextRace && (
+          <div className="rn-next">
+            <div className="rn-next-info">
+              <span className="rn-kicker"><span className="rn-pulse" />Tu próxima largada</span>
+              <h2>{resumen.nextRace.marathon.name}</h2>
+              <p className="rn-meta">
+                <span><Icon name="calendar" size={16} />{fecha(resumen.nextRace.marathon.startsAt, { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+                <span><Icon name="clock" size={16} />{hora(resumen.nextRace.marathon.startsAt)}</span>
+              </p>
+            </div>
+            <Countdown iso={resumen.nextRace.marathon.startsAt} />
+          </div>
+        )}
       </header>
 
       <main className="rn-wrap rn-main">
@@ -122,7 +127,7 @@ export default function RunnerPanel({ sesion, onLogout }) {
           onClose={() => { setInscribiendo(null); cargar() }}
           onVerRecibo={r => { setInscribiendo(null); setRecibo(r) }} />
       )}
-      {recibo && <Recibo inscripcion={recibo} carrera={carreraDe(recibo.marathon.id)} token={token} onClose={() => setRecibo(null)} />}
+      {recibo && <Recibo inscripcion={recibo} token={token} onClose={() => setRecibo(null)} />}
     </div>
   )
 }
@@ -147,11 +152,13 @@ function Countdown({ iso, compact }) {
   const t = faltan(iso, ahora)
   if (!t.total) return <p className="rn-live"><span className="rn-pulse" />¡Es hoy!</p>
   const p = n => String(n).padStart(2, '0')
+  const partes = [[t.dias, t.dias === 1 ? 'día' : 'días'], [p(t.horas), 'horas'], [p(t.min), 'min'], [p(t.seg), 'seg']]
   return (
     <div className={`rn-count${compact ? ' is-compact' : ''}`} role="timer" aria-label={`Faltan ${t.dias} días y ${t.horas} horas`}>
-      {[[t.dias, 'días'], [p(t.horas), 'horas'], [p(t.min), 'min'], [p(t.seg), 'seg']].map(([v, l]) => (
-        <span key={l}><b key={v}>{v}</b><small>{l}</small></span>
-      ))}
+      {partes.map(([v, l], i) => (<Fragment key={l}>
+        {i > 0 && <i className="rn-count-sep" aria-hidden="true">:</i>}
+        <span className="rn-count-u" aria-hidden="true"><b key={v}>{v}</b><small>{l}</small></span>
+      </Fragment>))}
     </div>
   )
 }
@@ -185,7 +192,10 @@ function textoAccion(c, r) {
 // ── Carreras: material promocional + inscripcion ───────────────────────────
 function TabCarreras({ carreras, porCarrera, onAccion, onPromo }) {
   if (!carreras) return <Skeleton />
-  if (!carreras.length) return <Vacio icon="flag" titulo="Pronto anunciamos nuevas carreras" texto="Volvé en unos días: acá vas a ver los afiches y abrir tu inscripción." />
+  if (!carreras.length) return (<>
+    <Vacio icon="flag" titulo="Pronto anunciamos nuevas carreras" texto="Volvé en unos días: acá vas a ver los afiches y abrir tu inscripción." />
+    <AppPromo />
+  </>)
   const futuras = carreras.filter(c => new Date(c.startsAt) > new Date())
   const destacada = futuras.find(puedeInscribirse) || futuras[0]
   const resto = carreras.filter(c => c !== destacada)
@@ -198,6 +208,7 @@ function TabCarreras({ carreras, porCarrera, onAccion, onPromo }) {
         {resto.map((c, i) => <TarjetaCarrera key={c.id} c={c} r={porCarrera[c.id]} i={i} onAccion={onAccion} onPromo={onPromo} />)}
       </div>
     </>)}
+    <AppPromo />
   </>)
 }
 
@@ -205,13 +216,14 @@ function Destacada({ c, r, onAccion, onPromo }) {
   const a = textoAccion(c, r)
   const est = ESTADO_CARRERA[c.registrationStatus]
   return (
-    <article className="rn-feature" style={c.coverUrl ? { '--cover': `url("${c.coverUrl}")` } : undefined}>
+    <article className="rn-feature">
+      <Arte carrera={c} proporcion={2.4} />
       <div className="rn-feature-in">
         <div className="rn-feature-tags">
           {est && <Chip tono={est.tono}>{est.label}</Chip>}
-          {r && <Chip tono={ESTADO_INSCRIPCION[r.status]?.tono}>{r.status === 'confirmed' ? `Inscrito${r.bibNumber ? ` · #${r.bibNumber}` : ''}` : ESTADO_INSCRIPCION[r.status]?.label}</Chip>}
+          {r && <Chip tono={ESTADO_INSCRIPCION[r.status]?.tono}>{r.status === 'confirmed' ? 'Inscrito' : ESTADO_INSCRIPCION[r.status]?.label}</Chip>}
         </div>
-        {c.logoHorizontalUrl && <img className="rn-feature-logo" src={c.logoHorizontalUrl} alt="" />}
+        {c.coverUrl && (c.logoHorizontalUrl || c.logoVerticalUrl) && <img className="rn-feature-logo" src={c.coverUrl} alt="" />}
         <h2>{c.name}</h2>
         <p className="rn-meta">
           <span><Icon name="calendar" size={16} />{fecha(c.startsAt, { weekday: 'long', day: 'numeric', month: 'long' })}</span>
@@ -222,7 +234,7 @@ function Destacada({ c, r, onAccion, onPromo }) {
         <Countdown iso={c.startsAt} compact />
         <div className="rn-feature-cta">
           <button className="rn-btn is-accent is-lg" onClick={() => onAccion(c)} disabled={!a.ok}><Icon name={a.icon} size={20} />{a.label}</button>
-          <button className="rn-btn is-glass is-lg" onClick={() => onPromo(c)}><Icon name="image" size={20} />Ver afiche y detalles</button>
+          <button className="rn-btn is-light is-lg" onClick={() => onPromo(c)}><Icon name="image" size={20} />Ver afiche y detalles</button>
         </div>
         {!r && <Cupos c={c} />}
       </div>
@@ -248,7 +260,7 @@ function TarjetaCarrera({ c, r, i, onAccion, onPromo }) {
   return (
     <article className="rn-card" style={{ '--i': i }}>
       <button className="rn-card-media" onClick={() => onPromo(c)} aria-label={`Ver material de ${c.name}`}>
-        {c.coverUrl ? <img src={c.coverUrl} alt="" loading="lazy" /> : <span className="rn-card-ph"><Icon name="flag" size={40} /></span>}
+        <Arte carrera={c} proporcion={1.6} />
         <span className="rn-date"><b>{d.getDate()}</b>{d.toLocaleDateString('es-BO', { month: 'short' })}</span>
       </button>
       <div className="rn-card-body">
@@ -260,7 +272,7 @@ function TarjetaCarrera({ c, r, i, onAccion, onPromo }) {
         <p className="rn-meta is-sm"><span><Icon name="pin" size={14} />{c.city}</span><span><Icon name="flag" size={14} />{km(c.distanceMeters)}</span><span><Icon name="coins" size={14} />{bs(c.priceCents, c.currency)}</span></p>
         <div className="rn-card-actions">
           <button className="rn-btn is-sm" onClick={() => onAccion(c)} disabled={!a.ok}><Icon name={a.icon} size={16} />{a.label}</button>
-          <button className="rn-btn is-ghost is-sm" onClick={() => onPromo(c)}>Detalles</button>
+          <button className="rn-btn is-outline is-sm" onClick={() => onPromo(c)}>Detalles</button>
         </div>
       </div>
     </article>
@@ -280,7 +292,8 @@ function Promo({ carrera, reg, onClose, onAccion }) {
   const incluye = Array.isArray(d.includes) ? d.includes : []
   const crono = Array.isArray(d.schedule) ? d.schedule : []
   const kit = d.kitPickup && typeof d.kitPickup === 'object' ? d.kitPickup : null
-  const logos = [d.logoVerticalUrl, d.logoHorizontalUrl].filter(Boolean)
+  const afiche = arte(d, 0.8)
+  const material = [[d.logoVerticalUrl, 'Afiche vertical'], [d.logoHorizontalUrl, 'Afiche horizontal'], [d.coverUrl, 'Logo']].filter(([u]) => u)
 
   return createPortal(
     <div className="rn-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
@@ -288,8 +301,8 @@ function Promo({ carrera, reg, onClose, onAccion }) {
         <button className="rn-close is-float" onClick={onClose} aria-label="Cerrar"><Icon name="x" /></button>
         <div className="rn-promo-grid">
           <figure className="rn-poster">
-            {d.coverUrl ? <img src={d.coverUrl} alt={`Afiche de ${d.name}`} /> : <span className="rn-card-ph"><Icon name="image" size={48} /></span>}
-            {d.coverUrl && <a className="rn-btn is-glass is-sm" href={d.coverUrl} target="_blank" rel="noreferrer" download><Icon name="download" size={16} />Descargar afiche</a>}
+            <Arte carrera={d} proporcion={0.8} alt={`Afiche de ${d.name}`} />
+            {afiche && <a className="rn-btn is-light is-sm" href={afiche} target="_blank" rel="noreferrer" download><Icon name="download" size={16} />Descargar afiche</a>}
           </figure>
           <div className="rn-promo-info">
             <span className="rn-kicker">{fecha(d.startsAt, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
@@ -308,9 +321,9 @@ function Promo({ carrera, reg, onClose, onAccion }) {
               <h4 className="rn-subtitle"><Icon name="pin" size={16} />Entrega de kits</h4>
               <p className="rn-muted">{kit.address}{kit.dates && ` · ${kit.dates}`}{kit.hours && ` · ${kit.hours}`}</p>
             </>)}
-            {logos.length > 0 && (<>
-              <h4 className="rn-subtitle"><Icon name="image" size={16} />Logos oficiales</h4>
-              <div className="rn-logos">{logos.map(u => <a key={u} href={u} target="_blank" rel="noreferrer" download><img src={u} alt="Logo de la carrera" loading="lazy" /></a>)}</div>
+            {material.length > 0 && (<>
+              <h4 className="rn-subtitle"><Icon name="image" size={16} />Material promocional</h4>
+              <div className="rn-logos">{material.map(([u, t]) => <a key={u} href={u} target="_blank" rel="noreferrer" download title={`Descargar ${t.toLowerCase()}`}><img src={u} alt={t} loading="lazy" /><small>{t}</small></a>)}</div>
             </>)}
             <div className="rn-promo-cta">
               <div><small>Inscripción</small><strong>{bs(d.priceCents, d.currency)}</strong></div>
@@ -328,7 +341,7 @@ function Promo({ carrera, reg, onClose, onAccion }) {
 function TabInscripciones({ regs, races, carreraDe, cargando, onRecibo, onSeguir, onIr }) {
   if (cargando) return <Skeleton n={2} />
   const vivas = regs.filter(r => r.status !== 'cancelled')
-  if (!vivas.length) return <Vacio icon="ticket" titulo="Todavía no te inscribiste" texto="Elegí tu próxima carrera y asegurá tu dorsal."><button className="rn-btn" onClick={onIr}>Ver carreras<Icon name="arrow" size={18} /></button></Vacio>
+  if (!vivas.length) return <Vacio icon="ticket" titulo="Todavía no te inscribiste" texto="Elegí tu próxima carrera y asegurá tu lugar."><button className="rn-btn" onClick={onIr}>Ver carreras<Icon name="arrow" size={18} /></button></Vacio>
   const resultado = Object.fromEntries(races.map(x => [x.registrationId, x]))
   const ordenadas = [...vivas].sort((a, b) => new Date(b.marathon.startsAt) - new Date(a.marathon.startsAt))
 
@@ -342,8 +355,9 @@ function TabInscripciones({ regs, races, carreraDe, cargando, onRecibo, onSeguir
         const pasada = new Date(r.marathon.startsAt) < new Date()
         return (
           <article key={r.id} className={`rn-reg is-${r.status}`} style={{ '--i': i }}>
-            <div className="rn-reg-media" style={c?.coverUrl ? { '--cover': `url("${c.coverUrl}")` } : undefined}>
-              {r.bibNumber ? <div className="rn-bib"><small>Dorsal</small><b>{r.bibNumber}</b></div> : <Icon name="ticket" size={34} />}
+            <div className="rn-reg-media">
+              <Arte carrera={c} proporcion={1.2} />
+              <span className="rn-date is-lg"><b>{new Date(r.marathon.startsAt).getDate()}</b>{new Date(r.marathon.startsAt).toLocaleDateString('es-BO', { month: 'short' })}</span>
             </div>
             <div className="rn-reg-body">
               <div className="rn-card-tags"><Chip tono={est?.tono}>{est?.label}</Chip>{rc?.categoryName && <Chip tono="neutral">{rc.categoryName}</Chip>}</div>
@@ -447,20 +461,18 @@ function Kpi({ icon, label, valor, sub, i }) {
 
 function AppPromo() {
   return (
-    <section className="rn-app">
+    <section className="rn-app" aria-labelledby="rn-app-title">
+      <span className="rn-app-icon" aria-hidden="true"><img src="/logo.png" alt="" /></span>
       <div className="rn-app-copy">
-        <span className="rn-kicker">App CAM RUN</span>
-        <h2>Registrá cada kilómetro desde tu celular</h2>
+        <span className="rn-kicker">App CAM RUN · gratis</span>
+        <h2 id="rn-app-title">Llevá CAM RUN en tu celular</h2>
         <ul>
-          <li><Icon name="activity" size={18} />Grabá tus entrenamientos con GPS: ritmo, distancia y desnivel.</li>
-          <li><Icon name="flag" size={18} />El día de la maratón, la app te sigue en vivo y registra tu tiempo oficial.</li>
-          <li><Icon name="trophy" size={18} />Todo se sincroniza con este panel.</li>
+          <li><Icon name="activity" size={16} />Entrenos con GPS</li>
+          <li><Icon name="flag" size={16} />Tu tiempo oficial en vivo</li>
+          <li><Icon name="trend" size={16} />Sincronizado con este panel</li>
         </ul>
-        <a className="rn-btn is-accent is-lg" href={APK_URL}><Icon name="download" size={20} />Descargar para Android</a>
       </div>
-      <div className="rn-app-qr" aria-hidden="true">
-        <div className="rn-phone"><span className="rn-phone-notch" /><QRCodeSVG value={APK_URL} size={132} fgColor="#2E1065" level="M" /><small>Escaneá para descargar</small></div>
-      </div>
+      <StoreBadges />
     </section>
   )
 }
@@ -505,17 +517,89 @@ function TabPerfil({ sesion, me, setMe, debeCambiar }) {
         {msg && <p className={msg.bad ? 'rn-error' : 'rn-ok'} role="status">{msg.t}</p>}
         <div className="rn-card-actions is-center">
           <button className="rn-btn is-sm" onClick={() => input.current?.click()} disabled={subiendo}><Icon name="upload" size={16} />Subir foto</button>
-          {p.avatarUrl && <button className="rn-btn is-ghost is-sm" onClick={quitar} disabled={subiendo}><Icon name="trash" size={16} />Quitar</button>}
+          {p.avatarUrl && <button className="rn-btn is-outline is-sm" onClick={quitar} disabled={subiendo}><Icon name="trash" size={16} />Quitar</button>}
         </div>
-        <dl className="rn-facts">
-          <div><dt>Carnet</dt><dd>{u.ci || '—'}</dd></div>
-          <div><dt>Celular</dt><dd>{p.phone || '—'}</dd></div>
-          <div><dt>Ciudad</dt><dd>{p.city || '—'}</dd></div>
-          <div><dt>Miembro desde</dt><dd>{fecha(me?.createdAt, { month: 'long', year: 'numeric' })}</dd></div>
-        </dl>
+        {me?.createdAt && <p className="rn-muted is-sm">Miembro desde {fecha(me.createdAt, { month: 'long', year: 'numeric' })}</p>}
       </div>
-      <CambiarClave token={token} obligatoria={debeCambiar} onCambiada={() => setMe(m => m && { ...m, mustChangePassword: false })} />
+      <div className="rn-stack">
+        {me && <DatosPersonales me={me} token={token} onGuardado={setMe} />}
+        <CambiarClave token={token} obligatoria={debeCambiar} onCambiada={() => setMe(m => m && { ...m, mustChangePassword: false })} />
+      </div>
     </div>
+  )
+}
+
+const GENEROS = [['female', 'Mujer'], ['male', 'Hombre'], ['other', 'Otro'], ['unspecified', 'Prefiero no decir']]
+
+function desdeMe(me) {
+  const p = me.profile || {}
+  return {
+    name: me.name || '', email: me.email || '', ci: me.ci || '', phone: p.phone || '', city: p.city || '',
+    birthDate: p.birthDate ? p.birthDate.slice(0, 10) : '', gender: p.gender || 'unspecified',
+    peso: p.weightGrams ? String(p.weightGrams / 1000) : '', heightCm: p.heightCm ? String(p.heightCm) : '',
+  }
+}
+
+// PATCH /users/me solo con lo que cambio: tocar el email lo deja sin verificar
+function DatosPersonales({ me, token, onGuardado }) {
+  const base = useMemo(() => desdeMe(me), [me])
+  const [f, setF] = useState(base)
+  const [estado, setEstado] = useState(null)
+  const [enviando, setEnviando] = useState(false)
+  useEffect(() => setF(base), [base])
+  const set = k => e => setF({ ...f, [k]: e.target.value })
+  const cambios = Object.keys(f).filter(k => f[k] !== base[k])
+
+  async function submit(e) {
+    e.preventDefault()
+    const nulo = v => (v.trim() === '' ? null : v.trim())
+    const cuerpo = {}
+    for (const k of cambios) {
+      if (k === 'peso') cuerpo.weightGrams = f.peso ? Math.round(Number(f.peso) * 1000) : null
+      else if (k === 'heightCm') cuerpo.heightCm = f.heightCm ? Number(f.heightCm) : null
+      else if (['phone', 'city', 'birthDate'].includes(k)) cuerpo[k] = nulo(f[k])
+      else cuerpo[k] = f[k].trim()
+    }
+    setEnviando(true); setEstado(null)
+    try {
+      onGuardado(await updateMe(cuerpo, token))
+      setEstado({ t: cuerpo.email ? 'Datos guardados. Revisá tu correo nuevo para verificarlo.' : 'Datos guardados.' })
+    } catch (err) { setEstado({ bad: true, t: err.message }) }
+    setEnviando(false)
+  }
+
+  return (
+    <form className="rn-box rn-form" onSubmit={submit}>
+      <h2 className="rn-h3"><Icon name="user" size={20} />Datos personales</h2>
+      <div className="rn-grid2">
+        <label className="rn-field is-full"><span className="rn-field-label">Nombre completo</span>
+          <input required maxLength={120} value={f.name} onChange={set('name')} autoComplete="name" /></label>
+        <label className="rn-field"><span className="rn-field-label">Carnet de identidad</span>
+          <input required maxLength={40} value={f.ci} onChange={set('ci')} /></label>
+        <label className="rn-field"><span className="rn-field-label">Celular</span>
+          <input type="tel" maxLength={40} value={f.phone} onChange={set('phone')} autoComplete="tel" placeholder="+591 70000000" /></label>
+        <label className="rn-field is-full"><span className="rn-field-label">Correo</span>
+          <input type="email" maxLength={254} value={f.email} onChange={set('email')} autoComplete="email" />
+          {f.email !== base.email && <small>Al cambiarlo tendrás que verificar el correo nuevo.</small>}</label>
+        <label className="rn-field"><span className="rn-field-label">Ciudad</span>
+          <input maxLength={120} value={f.city} onChange={set('city')} autoComplete="address-level2" /></label>
+        <label className="rn-field"><span className="rn-field-label">Fecha de nacimiento</span>
+          <input type="date" value={f.birthDate} onChange={set('birthDate')} max={new Date().toISOString().slice(0, 10)} /></label>
+        <label className="rn-field"><span className="rn-field-label">Género</span>
+          <select value={f.gender} onChange={set('gender')}>{GENEROS.map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></label>
+        <div className="rn-grid2 is-tight">
+          <label className="rn-field"><span className="rn-field-label">Peso (kg)</span>
+            <input type="number" inputMode="decimal" min="20" max="400" step="0.1" value={f.peso} onChange={set('peso')} /></label>
+          <label className="rn-field"><span className="rn-field-label">Altura (cm)</span>
+            <input type="number" inputMode="numeric" min="80" max="260" value={f.heightCm} onChange={set('heightCm')} /></label>
+        </div>
+      </div>
+      {estado && <p className={estado.bad ? 'rn-error' : 'rn-ok'} role="status">{estado.t}</p>}
+      <div className="rn-form-foot">
+        {cambios.length > 0 && <button type="button" className="rn-btn is-outline" onClick={() => setF(base)}>Descartar</button>}
+        <button className="rn-btn" disabled={!cambios.length || enviando}>{enviando ? <span className="rn-spin" /> : <Icon name="check" size={18} />}Guardar cambios</button>
+      </div>
+    </form>
   )
 }
 

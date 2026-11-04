@@ -165,18 +165,14 @@ export const getHighlights = token => fetchApi('/users/me/highlights', { token }
 export const getWorkouts = (token, limit = 10) => fetchApi(`/workouts?limit=${limit}`, { token })
 export const getWorkoutWeeks = token => fetchApi('/workouts/grouped?by=week', { token })
 
-export async function downloadReceiptPdf(registrationId, token) {
-  const res = await fetchConToken(`${BASE}/races/${registrationId}/receipt/pdf`, {}, token)
+// El mismo PDF que muestra la app movil
+export async function getReceiptPdf(registrationId, token) {
+  const res = await fetchConToken(`${BASE}/races/${registrationId}/receipt/pdf`, { headers: { Accept: 'application/pdf' } }, token)
   if (!res.ok) {
     const json = await res.json().catch(() => null)
     throw new Error(json?.error?.message || `Error ${res.status}`)
   }
-  const url = URL.createObjectURL(await res.blob())
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `recibo-${registrationId.slice(-6)}.pdf`
-  a.click()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  return new Blob([await res.blob()], { type: 'application/pdf' })
 }
 
 export async function uploadAvatar(file, token) {
@@ -366,19 +362,6 @@ export async function uploadMarathonImage(token, marathonId, slot, file) {
     body: formData,
     token,
   })
-}
-
-// APK de Android. La URL pública redirige siempre a la última versión subida.
-export const APK_URL = `${BASE}/config/app/apk`
-
-export async function getApkInfo(token) {
-  return fetchApi('/config/app/apk/info', { token })
-}
-
-export async function uploadApk(token, file) {
-  const formData = new FormData()
-  formData.append('file', file)
-  return fetchApi('/config/app/apk', { method: 'POST', body: formData, token })
 }
 
 // Ensayo: copia privada de la maraton con las cuentas de `emails` como

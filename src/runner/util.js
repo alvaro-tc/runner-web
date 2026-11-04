@@ -39,3 +39,12 @@ export const ESTADO_CARRERA = {
 }
 
 export const puedeInscribirse = m => m.registrationStatus === 'open' || m.registrationStatus === 'closing_soon'
+
+// Marathon.artworkFor de la app: el material promocional son los dos logos
+// (vertical para huecos altos, horizontal para anchos); coverUrl es el logo
+// pequeno de las miniaturas y el ultimo recurso.
+export function arte(m, proporcion, chico = false) {
+  if (chico && m?.coverUrl) return m.coverUrl
+  const [a, b] = proporcion <= 1.1 ? [m?.logoVerticalUrl, m?.logoHorizontalUrl] : [m?.logoHorizontalUrl, m?.logoVerticalUrl]
+  return a || b || m?.coverUrl || null
+}

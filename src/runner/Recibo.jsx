@@ -1,21 +1,24 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Icon } from '../components/AdminCharts'
-import { downloadReceiptPdf, getRegistrationPayments, listaDe } from '../api'
-import { bs, fecha, hora } from './util'
+import { getReceiptPdf } from '../api'
 
-// Recibo visual de una inscripcion confirmada + el PDF oficial del backend
-export default function Recibo({ inscripcion, carrera, token, onClose }) {
-  const [pago, setPago] = useState(null)
-  const [bajando, setBajando] = useState(false)
+// Igual que RaceReceiptPage de la app: el PDF del backend, y guardar o imprimir
+export default function Recibo({ inscripcion, token, onClose }) {
+  const [pdf, setPdf] = useState(null) // { blob, url }
   const [error, setError] = useState('')
-  const pd = inscripcion.personalData || {}
+  const [intento, setIntento] = useState(0)
+  const marco = useRef(null)
+  const nombre = `recibo-${inscripcion.id}.pdf`
 
   useEffect(() => {
-    getRegistrationPayments(inscripcion.id, token)
-      .then(r => setPago(listaDe(r).find(p => p.status === 'paid') || null))
-      .catch(() => {})
-  }, [inscripcion.id, token])
+    let url
+    setError(''); setPdf(null)
+    getReceiptPdf(inscripcion.id, token)
+      .then(blob => { url = URL.createObjectURL(blob); setPdf({ blob, url }) })
+      .catch(() => setError('No se pudo abrir el recibo. Vuelve a intentarlo.'))
+    return () => url && URL.revokeObjectURL(url)
+  }, [inscripcion.id, token, intento])
 
   useEffect(() => {
     const esc = e => e.key === 'Escape' && onClose()
@@ -23,59 +26,45 @@ export default function Recibo({ inscripcion, carrera, token, onClose }) {
     return () => window.removeEventListener('keydown', esc)
   }, [onClose])
 
-  async function pdf() {
-    setBajando(true); setError('')
-    try { await downloadReceiptPdf(inscripcion.id, token) } catch (e) { setError(e.message) }
-    setBajando(false)
+  async function guardar() {
+    const archivo = new File([pdf.blob], nombre, { type: 'application/pdf' })
+    if (navigator.canShare?.({ files: [archivo] })) {
+      try { return await navigator.share({ files: [archivo], title: 'Recibo de donación' }) } catch (e) { if (e.name === 'AbortError') return }
+    }
+    const a = document.createElement('a')
+    a.href = pdf.url
+    a.download = nombre
+    a.click()
   }
 
-  const ref = pago?.methodDetails?.manualQr?.reference
-  const total = pago?.amountCents ?? inscripcion.totalCents
+  function imprimir() {
+    try { marco.current.contentWindow.print() } catch { window.open(pdf.url, '_blank') }
+  }
 
   return createPortal(
     <div className="rn-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
-      <div className="rn-receipt" role="dialog" aria-modal="true" aria-labelledby="rn-receipt-title">
-        <button className="rn-close" onClick={onClose} aria-label="Cerrar recibo"><Icon name="x" /></button>
-        <header className="rn-receipt-top" style={carrera?.coverUrl ? { '--cover': `url("${carrera.coverUrl}")` } : undefined}>
-          {carrera?.logoHorizontalUrl
-            ? <img className="rn-receipt-logo" src={carrera.logoHorizontalUrl} alt="" />
-            : <span className="rn-receipt-kicker">CAM RUN</span>}
-          <h2 id="rn-receipt-title">{inscripcion.marathon?.name}</h2>
-          <p>{fecha(inscripcion.marathon?.startsAt, { weekday: 'long', day: 'numeric', month: 'long' })} · {hora(inscripcion.marathon?.startsAt)} · {inscripcion.marathon?.city}</p>
-          <span className="rn-stamp"><Icon name="check" size={14} />Pagado</span>
+      <div className="rn-sheet is-receipt" role="dialog" aria-modal="true" aria-labelledby="rn-receipt-title">
+        <header className="rn-sheet-bar">
+          <h2 id="rn-receipt-title">Recibo de donación</h2>
+          <button className="rn-icon-btn" onClick={onClose} aria-label="Cerrar recibo"><Icon name="x" /></button>
         </header>
-
-        <div className="rn-receipt-bib">
-          <span>Dorsal</span>
-          <strong>{inscripcion.bibNumber || '—'}</strong>
+        <div className="rn-receipt-doc">
+          {error ? (
+            <div className="rn-empty is-flat">
+              <span className="rn-empty-icon"><Icon name="alert" size={28} /></span>
+              <p>{error}</p>
+              <button className="rn-btn is-outline" onClick={() => setIntento(i => i + 1)}><Icon name="refresh" size={18} />Reintentar</button>
+            </div>
+          ) : pdf ? (
+            <iframe ref={marco} src={`${pdf.url}#toolbar=0&navpanes=0&view=FitH`} title={`Recibo de ${inscripcion.marathon?.name}`} />
+          ) : (
+            <div className="rn-skel is-receipt" />
+          )}
         </div>
-
-        <div className="rn-perforation" aria-hidden="true" />
-
-        <dl className="rn-receipt-grid">
-          <div><dt>Corredor</dt><dd>{pd.fullName || '—'}</dd></div>
-          <div><dt>Documento</dt><dd>{pd.docId || '—'}</dd></div>
-          <div><dt>Talla</dt><dd>{pd.shirtSize || '—'}</dd></div>
-          <div><dt>Inscrito el</dt><dd>{fecha(inscripcion.registeredAt)}</dd></div>
-          {ref && <div><dt>Referencia</dt><dd className="rn-mono">{ref}</dd></div>}
-          {pago?.paidAt && <div><dt>Pagado el</dt><dd>{fecha(pago.paidAt)} {hora(pago.paidAt)}</dd></div>}
-        </dl>
-
-        <ul className="rn-lines">
-          {(inscripcion.items || []).map((l, i) => (
-            <li key={i}><span>{l.label}{l.quantity > 1 && ` × ${l.quantity}`}</span><span>{bs(l.amountCents, inscripcion.currency)}</span></li>
-          ))}
-          {inscripcion.serviceFee && <li><span>{inscripcion.serviceFee.label}</span><span>{bs(inscripcion.serviceFee.amountCents, inscripcion.currency)}</span></li>}
-          <li className="is-total"><span>Total pagado</span><span>{bs(total, inscripcion.currency)}</span></li>
-        </ul>
-
-        {error && <p className="rn-error" role="alert">{error}</p>}
         <div className="rn-receipt-actions">
-          <button className="rn-btn" onClick={pdf} disabled={bajando}>
-            {bajando ? <span className="rn-spin" /> : <Icon name="download" size={18} />}Descargar PDF
-          </button>
+          <button className="rn-btn is-block" onClick={guardar} disabled={!pdf}><Icon name="download" size={20} />Guardar o compartir</button>
+          <button className="rn-btn is-outline is-block" onClick={imprimir} disabled={!pdf}><Icon name="receipt" size={20} />Imprimir</button>
         </div>
-        <p className="rn-receipt-foot">Comprobante de donación por inscripción · No es una factura</p>
       </div>
     </div>,
     document.body,

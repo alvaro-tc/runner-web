@@ -35,7 +35,6 @@ const ACCIONES = [
   ['POST', '/admin/payment-proofs/:id/approve', 'Aprobó un comprobante'],
   ['POST', '/admin/payment-proofs/:id/reject', 'Rechazó un comprobante'],
   ['PUT', '/admin/service-fee', 'Cambió el cargo por servicio'],
-  ['POST', '/config/app/apk', 'Publicó un APK'],
   ['POST', '/pasarela/payment-intents/:id/paid', 'Validó un pago (API)'],
   ['PUT', '/admin/plataforma/payment-api', 'Cambió la API de pagos'],
   ['PUT', '/admin/plataforma/marathons/:id/validator', 'Asignó el validador de una carrera'],

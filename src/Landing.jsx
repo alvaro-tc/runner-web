@@ -86,15 +86,22 @@ function StoreBadge({ href, icon, eyebrow, name }) {
   )
 }
 
+// Las dos tiendas; tambien las usa el panel del corredor
+export function StoreBadges() {
+  return (
+    <div className="store-badges">
+      <StoreBadge href={PLAY_URL} icon={<GooglePlayIcon />} eyebrow="Disponible en" name="Google Play" />
+      <StoreBadge href={APPSTORE_URL} icon={<AppleIcon />} eyebrow="Descárgala en" name="App Store" />
+    </div>
+  )
+}
+
 // Aviso del hero: la app ya está disponible para descargar
 function HeroApps() {
   return (
     <div className="hero-apps">
       <p>Llevá CAM RUN en el celular</p>
-      <div className="store-badges">
-        <StoreBadge href={PLAY_URL} icon={<GooglePlayIcon />} eyebrow="Disponible en" name="Google Play" />
-        <StoreBadge href={APPSTORE_URL} icon={<AppleIcon />} eyebrow="Descárgala en" name="App Store" />
-      </div>
+      <StoreBadges />
     </div>
   )
 }
