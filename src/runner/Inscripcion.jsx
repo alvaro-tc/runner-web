@@ -328,7 +328,7 @@ function PasoPago({ pago, token, onPagado, onNuevoQr, onError }) {
       try {
         const p = await getPayment(pago.id, token)
         if (p.status === 'paid') { clearInterval(sondeo); return onPagado() }
-        if (!auto) setPrueba(await getPaymentProof(pago.id, token))
+        setPrueba(await getPaymentProof(pago.id, token))
       } catch {}
     }, auto ? 4000 : 8000)
     return () => { clearInterval(tic); clearInterval(sondeo) }
@@ -366,27 +366,27 @@ function PasoPago({ pago, token, onPagado, onNuevoQr, onError }) {
         )}
         <ol className="rn-howto">
           <li>Abrí la app de tu banco y escaneá el QR.</li>
-          {auto ? <li>Pagá el monto <b>exacto</b>: tu inscripción se confirma sola en segundos.</li>
+          {auto ? <li>Pagá el monto <b>exacto</b>.</li>
             : <li>Escribí la glosa <b>{qr.reference}</b> en la transferencia.</li>}
-          {!auto && <li>Subí la captura del comprobante aquí abajo.</li>}
+          <li>Subí la captura del comprobante aquí abajo.</li>
         </ol>
         {qr.instructions && <p className="rn-note"><Icon name="info" size={16} />{qr.instructions}</p>}
 
-        {auto ? (
-          <div className="rn-waiting"><span className="rn-pulse" />Esperando tu pago…</div>
-        ) : enRevision ? (
+        {enRevision ? (
           <div className="rn-waiting is-ok"><span className="rn-pulse" />Comprobante recibido. Lo estamos revisando; te avisamos al confirmar.</div>
         ) : (
           <form className="rn-proof" onSubmit={e => { e.preventDefault(); enviar(async () => setPrueba(await uploadPaymentProof(pago.id, archivo, refBanco, token))) }}>
             {prueba?.status === 'rejected' && (
               <p className="rn-error" role="alert"><Icon name="alert" size={16} />Rechazamos tu comprobante{prueba.note ? `: ${prueba.note}` : ''}. Subí otro.</p>
             )}
+            <p className="rn-warn" role="note"><Icon name="alert" size={16} /><span><b>Subí tu comprobante.</b> Sin comprobante no vamos a poder atender reclamos si tu pago no se acredita correctamente.</span></p>
             <label className={`rn-drop${archivo ? ' has-file' : ''}`}>
               <input type="file" accept="image/*" required onChange={e => setArchivo(e.target.files?.[0] || null)} />
               {vista ? <img src={vista} alt="Vista previa del comprobante" /> : (<><Icon name="upload" size={26} /><span>Tocá para subir la captura del comprobante</span></>)}
             </label>
             <Campo label="N.º de transacción (opcional)"><input value={refBanco} onChange={e => setRefBanco(e.target.value)} maxLength={80} /></Campo>
             <button className="rn-btn is-accent" disabled={!archivo || enviando || expiro}>{enviando ? <span className="rn-spin" /> : <Icon name="upload" size={18} />}Enviar comprobante</button>
+            {auto && <div className="rn-waiting"><span className="rn-pulse" />Esperando tu pago… si se acredita antes, se confirma solo.</div>}
           </form>
         )}
       </div>

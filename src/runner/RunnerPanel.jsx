@@ -92,19 +92,7 @@ export default function RunnerPanel({ sesion, onLogout }) {
           <Stat label="Km en carreras" valor={((resumen?.totalDistanceMeters || 0) / 1000).toFixed(1)} />
           <Stat label="Próximas" valor={resumen?.racesUpcoming ?? 0} />
         </div>
-        {resumen?.nextRace && (
-          <div className="rn-next">
-            <div className="rn-next-info">
-              <span className="rn-kicker"><span className="rn-pulse" />Tu próxima largada</span>
-              <h2>{resumen.nextRace.marathon.name}</h2>
-              <p className="rn-meta">
-                <span><Icon name="calendar" size={16} />{fecha(resumen.nextRace.marathon.startsAt, { weekday: 'long', day: 'numeric', month: 'long' })}</span>
-                <span><Icon name="clock" size={16} />{hora(resumen.nextRace.marathon.startsAt)}</span>
-              </p>
-            </div>
-            <Countdown iso={resumen.nextRace.marathon.startsAt} />
-          </div>
-        )}
+        {resumen?.nextRace && <ProximaLargada m={carreraDe(resumen.nextRace.marathon.id) || resumen.nextRace.marathon} onClick={setPromo} />}
       </header>
 
       <main className="rn-wrap rn-main">
@@ -142,6 +130,30 @@ function Avatar({ url, nombre, size, ring }) {
   )
 }
 
+// Tarjeta clickeable: abre el afiche y los detalles de la carrera en la que estas inscrito
+function ProximaLargada({ m, onClick }) {
+  const d = new Date(m.startsAt)
+  return (
+    <button className="rn-next" onClick={() => onClick(m)} aria-label={`Ver detalles de ${m.name}`}>
+      <span className="rn-next-media">
+        <Arte carrera={m} proporcion={1} />
+        <span className="rn-date"><b>{d.getDate()}</b>{d.toLocaleDateString('es-BO', { month: 'short' })}</span>
+      </span>
+      <span className="rn-next-info">
+        <span className="rn-kicker"><span className="rn-pulse" />Tu próxima largada</span>
+        <strong className="rn-next-name">{m.name}</strong>
+        <span className="rn-meta is-sm">
+          <span><Icon name="calendar" size={14} />{fecha(m.startsAt, { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+          <span><Icon name="clock" size={14} />{hora(m.startsAt)}</span>
+          {m.city && <span><Icon name="pin" size={14} />{m.city}</span>}
+        </span>
+        <span className="rn-next-more">Ver detalles de la carrera<Icon name="arrow" size={16} /></span>
+      </span>
+      <Countdown iso={m.startsAt} />
+    </button>
+  )
+}
+
 function Stat({ label, valor }) {
   return <div className="rn-stat"><strong>{valor}</strong><span>{label}</span></div>
 }
@@ -150,16 +162,16 @@ function Countdown({ iso, compact }) {
   const [ahora, setAhora] = useState(Date.now())
   useEffect(() => { const t = setInterval(() => setAhora(Date.now()), 1000); return () => clearInterval(t) }, [])
   const t = faltan(iso, ahora)
-  if (!t.total) return <p className="rn-live"><span className="rn-pulse" />¡Es hoy!</p>
+  if (!t.total) return <span className="rn-live"><span className="rn-pulse" />¡Es hoy!</span>
   const p = n => String(n).padStart(2, '0')
   const partes = [[t.dias, t.dias === 1 ? 'día' : 'días'], [p(t.horas), 'horas'], [p(t.min), 'min'], [p(t.seg), 'seg']]
   return (
-    <div className={`rn-count${compact ? ' is-compact' : ''}`} role="timer" aria-label={`Faltan ${t.dias} días y ${t.horas} horas`}>
+    <span className={`rn-count${compact ? ' is-compact' : ''}`} role="timer" aria-label={`Faltan ${t.dias} días y ${t.horas} horas`}>
       {partes.map(([v, l], i) => (<Fragment key={l}>
         {i > 0 && <i className="rn-count-sep" aria-hidden="true">:</i>}
         <span className="rn-count-u" aria-hidden="true"><b key={v}>{v}</b><small>{l}</small></span>
       </Fragment>))}
-    </div>
+    </span>
   )
 }
 
