@@ -378,7 +378,10 @@ function TabInscripciones({ regs, races, carreraDe, cargando, onRecibo, onSeguir
 
               {res ? (
                 <div className="rn-result">
-                  <div className="rn-rank"><Icon name="trophy" size={22} /><div><b>{res.overallRank ? `#${res.overallRank}` : '—'}</b><small>puesto general{res.finishers ? ` de ${res.finishers}` : ''}</small></div></div>
+                  <div className={`rn-rank${res.overallRank <= 3 ? ` is-p${res.overallRank}` : ''}`} aria-label={res.overallRank ? `Llegaste en el puesto ${res.overallRank}${res.finishers ? ` de ${res.finishers}` : ''}` : undefined}>
+                    <Icon name="trophy" size={22} />
+                    <div><b>{res.overallRank ? `#${res.overallRank}` : '—'}</b><small>{res.overallRank <= 3 ? `${['¡Ganaste!', '2.º lugar', '3.º lugar'][res.overallRank - 1]}${res.finishers ? ` de ${res.finishers}` : ''}` : `puesto general${res.finishers ? ` de ${res.finishers}` : ''}`}</small></div>
+                  </div>
                   {res.categoryRank && <div className="rn-rank is-alt"><div><b>#{res.categoryRank}</b><small>en tu categoría</small></div></div>}
                   <div className="rn-kv"><small>Tiempo</small><b>{duracion(res.chipTimeSeconds ?? res.finishTimeSeconds)}</b></div>
                   <div className="rn-kv"><small>Ritmo</small><b>{ritmo(res.avgPaceSecPerKm)}</b></div>

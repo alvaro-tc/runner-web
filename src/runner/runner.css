@@ -187,6 +187,9 @@
 .rn-reg-count { display: flex; align-items: center; gap: 12px; flex-wrap: wrap }
 .rn-result { display: flex; flex-wrap: wrap; gap: 8px }
 .rn-rank { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: var(--r); background: var(--grad); color: #fff }
+.rn-rank.is-p1 { background: linear-gradient(135deg, #B45309, #78350F) }
+.rn-rank.is-p2 { background: linear-gradient(135deg, #64748B, #334155) }
+.rn-rank.is-p3 { background: linear-gradient(135deg, #C2410C, #7C2D12) }
 .rn-rank.is-alt { background: var(--p-soft); color: var(--p-dark) }
 .rn-rank b, .rn-kv b { display: block; font-size: 20px; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums }
 .rn-rank small, .rn-kv small { font-size: 12px; font-weight: 500 }

@@ -285,6 +285,12 @@ export async function saveManualPodium(token, marathonId, results) {
   })
 }
 
+export const getRanking = (token, marathonId) => fetchApi(`/admin/marathons/${marathonId}/ranking`, { token })
+
+// registrationIds en orden de llegada; [] vuelve al orden automatico.
+export const saveRanking = (token, marathonId, registrationIds) =>
+  fetchApi(`/admin/marathons/${marathonId}/ranking`, { method: 'PUT', body: JSON.stringify({ registrationIds }), token })
+
 // El CSV llega como archivo, fuera del sobre { data }: por eso no pasa por fetchApi
 export async function downloadRegistrantsCsv(token, marathon) {
   const res = await fetchConToken(`${BASE}/admin/marathons/${marathon.id}/registrants.csv`, {}, token)

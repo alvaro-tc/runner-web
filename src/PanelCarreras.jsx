@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import DonationReceipt from './components/DonationReceipt'
+import Clasificacion from './Clasificacion'
 import { DailyChart, Donut, Funnel, HBars, Icon, Sparkline } from './components/AdminCharts'
 import {
   getAdminMarathons,
@@ -38,7 +39,7 @@ const SECCIONES = [
   ['delicado', 'Acciones delicadas', 'shield'],
 ]
 
-const VISTAS = [['resumen', 'Resumen', 'chart'], ['editar', 'Editar carrera', 'edit'], ['inscritas', 'Inscritas', 'users']]
+const VISTAS = [['resumen', 'Resumen', 'chart'], ['editar', 'Editar carrera', 'edit'], ['inscritas', 'Inscritas', 'users'], ['clasificacion', 'Clasificación', 'trophy']]
 
 const ESTADO_INSCRIPCION = { open: 'Inscripciones abiertas', closing_soon: 'Por cerrar', full: 'Cupos llenos', closed: 'Inscripciones cerradas' }
 const EDADES = ['<18', '18-29', '30-39', '40-49', '50-59', '60+']
@@ -96,7 +97,7 @@ function Miniatura({ carrera, size = 40 }) {
 }
 
 // Cada pestaña con el permiso que la abre. Un veedor (carreras.ver + inscritas.ver) solo ve Inscritas.
-const VISTAS_PERMISO = { resumen: 'resumen.ver', editar: 'carreras.editar', inscritas: 'inscritas.ver' }
+const VISTAS_PERMISO = { resumen: 'resumen.ver', editar: 'carreras.editar', inscritas: 'inscritas.ver', clasificacion: 'carreras.ver' }
 
 export default function PanelCarreras({ sesion, puede = () => true }) {
   const token = sesion.accessToken
@@ -204,6 +205,7 @@ export default function PanelCarreras({ sesion, puede = () => true }) {
                 onEliminada={() => { setSelId(''); cargarCarreras(); setTab('resumen') }} onError={setError} />
             : <div className="ad-loading"><span className="ad-spinner" /> Cargando carrera…</div>)}
           {tab === 'inscritas' && <Inscritas key={sel.id} token={token} carrera={sel} />}
+          {tab === 'clasificacion' && <Clasificacion key={sel.id} token={token} carrera={sel} editable={editor} />}
         </>
       )}
 
