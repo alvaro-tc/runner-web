@@ -6,6 +6,7 @@ import PanelUsuarios from './PanelUsuarios'
 import PanelRoles from './PanelRoles'
 import PanelAuditoria from './PanelAuditoria'
 import PanelPlataforma from './PanelPlataforma'
+import PanelPerfil from './PanelPerfil'
 import { getMyAccess } from './api'
 import './admin.css'
 
@@ -39,7 +40,8 @@ export default function PanelAdmin({ sesion, onLogout }) {
   const permisos = acceso?.permissions || []
   const puede = p => permisos.includes(p)
   const visibles = MODULOS.filter(m => puede(m.permiso))
-  const actual = visibles.find(m => m.key === modulo) || visibles[0]
+  const enPerfil = modulo === 'perfil' // el perfil no es un módulo con permiso: todo rol lo tiene
+  const actual = enPerfil ? { key: 'perfil', Vista: PanelPerfil } : visibles.find(m => m.key === modulo) || visibles[0]
 
   function elegir(k) {
     setModulo(k)
@@ -47,7 +49,9 @@ export default function PanelAdmin({ sesion, onLogout }) {
     window.scrollTo({ top: 0 })
   }
 
-  const nombre = acceso?.user?.name || sesion.user.name
+  const [yo, setYo] = useState(null)
+  const nombre = yo?.name || acceso?.user?.name || sesion.user.name
+  const avatar = yo?.profile?.avatarUrl
 
   return (
     <div className="ad">
@@ -69,8 +73,10 @@ export default function PanelAdmin({ sesion, onLogout }) {
         )}
 
         <div className="ad-me">
-          <span className="ad-avatar" aria-hidden="true">{iniciales(nombre)}</span>
-          <span className="ad-me-txt"><strong>{nombre}</strong><small>{acceso?.roleName || '…'}</small></span>
+          <button className="ad-person" style={{ flex: 1, minWidth: 0, textAlign: 'left' }} onClick={() => elegir('perfil')} aria-label="Mi perfil" aria-current={enPerfil ? 'page' : undefined}>
+            {avatar ? <img className="ad-avatar" src={avatar} alt="" style={{ objectFit: 'cover' }} /> : <span className="ad-avatar" aria-hidden="true">{iniciales(nombre)}</span>}
+            <span className="ad-me-txt"><strong>{nombre}</strong><small>{acceso?.roleName || '…'}</small></span>
+          </button>
           <button className="ad-icon-btn" onClick={onLogout} aria-label="Cerrar sesión" title="Cerrar sesión"><Icon name="logout" /></button>
         </div>
       </aside>
@@ -85,7 +91,7 @@ export default function PanelAdmin({ sesion, onLogout }) {
             <p>Pedile a quien administra los roles que le asigne permisos a <b>{acceso.roleName}</b>.</p>
           </div>
         )}
-        {actual && <actual.Vista key={actual.key} sesion={sesion} puede={puede} />}
+        {actual && <actual.Vista key={actual.key} sesion={sesion} puede={puede} onMe={setYo} />}
       </main>
     </div>
   )
