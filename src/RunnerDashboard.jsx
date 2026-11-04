@@ -239,7 +239,8 @@ function RegistrationForm({ marathon, me, token, onCancel, onDone }) {
     try {
       const reg = await createRegistration(marathon.id, personalData, token, categoryId || undefined)
       const { payment } = await checkoutRegistration(reg.id, token, termsAccepted)
-      await uploadPaymentProof(payment.id, proof.get('file'), proof.get('reference'), token)
+      // Con la API el QR recién existe ahora: se paga y se sube el comprobante desde "Mis inscripciones"
+      if (!api) await uploadPaymentProof(payment.id, proof.get('file'), proof.get('reference'), token)
       onDone()
     } catch (err) {
       // ponytail: si falla tras crear la inscripción, el corredor reintenta el comprobante desde "Mis inscripciones"
@@ -247,8 +248,10 @@ function RegistrationForm({ marathon, me, token, onCancel, onDone }) {
     }
   }
 
+  // API de pagos encendida: el QR lo genera la API en el checkout, el de la BD no se usa
+  const api = Boolean(marathon.paymentApi)
   // Sin payload el backend rechaza el checkout (QR_NOT_CONFIGURED) después de crear la inscripción
-  const hasQr = Boolean(marathon.paymentQrPayload?.trim())
+  const hasQr = api || Boolean(marathon.paymentQrPayload?.trim())
   const total = marathon.priceCents + (categories.find((c) => c.id === form.categoryId)?.extraPriceCents || 0)
 
   return (
@@ -290,28 +293,35 @@ function RegistrationForm({ marathon, me, token, onCancel, onDone }) {
 
         <h3 className="form-section">2. Pago por QR</h3>
         {!hasQr && <p className="notice notice-warning">Esta carrera todavía no tiene un QR de pago cargado. Vuelve a intentarlo más tarde.</p>}
-        <div className="qr-instructions">
-          <PaymentQr payload={marathon.paymentQrPayload} imageUrl={marathon.paymentQrUrl} />
-          <div>
-            <p>{marathon.paymentQrInstructions || 'Escanea el QR desde tu aplicación bancaria y paga el monto indicado.'}</p>
-            <p><strong>Monto a pagar:</strong> {money(total, marathon.currency)}</p>
+        {api ? (
+          <div className="notice notice-warning">
+            Al enviar la inscripción se genera tu QR de pago. Págalo y sube el comprobante en <strong>Mis inscripciones</strong>: se confirma automáticamente.
+            <p><strong>Monto aproximado:</strong> {money(total, marathon.currency)} (el QR puede sumar unos centavos para identificar tu pago)</p>
           </div>
-        </div>
-        <div className="dash-form-grid">
+        ) : (
+          <div className="qr-instructions">
+            <PaymentQr payload={marathon.paymentQrPayload} imageUrl={marathon.paymentQrUrl} />
+            <div>
+              <p>{marathon.paymentQrInstructions || 'Escanea el QR desde tu aplicación bancaria y paga el monto indicado.'}</p>
+              <p><strong>Monto a pagar:</strong> {money(total, marathon.currency)}</p>
+            </div>
+          </div>
+        )}
+        {!api && <div className="dash-form-grid">
           <label>Comprobante de pago *
             <input type="file" name="file" accept="image/*" required onChange={(e) => setPreview(e.target.files[0] ? URL.createObjectURL(e.target.files[0]) : null)} />
           </label>
           <label>Número de transacción
             <input name="reference" maxLength={80} placeholder="Opcional" />
           </label>
-        </div>
-        {preview && <img src={preview} alt="Vista previa del comprobante" className="proof-preview" />}
+        </div>}
+        {!api && preview && <img src={preview} alt="Vista previa del comprobante" className="proof-preview" />}
 
         <h3 className="form-section">3. Términos y condiciones</h3>
         <TermsCheck name="termsAccepted" checked={form.termsAccepted} onChange={change} />
 
         {estado.error && <p className="dash-error">{estado.error}</p>}
-        <button className="btn-primary dash-submit" type="submit" disabled={estado.saving || !hasQr || !form.termsAccepted}>{estado.saving ? 'Enviando…' : 'Enviar inscripción y comprobante'}</button>
+        <button className="btn-primary dash-submit" type="submit" disabled={estado.saving || !hasQr || !form.termsAccepted}>{estado.saving ? (api ? 'Generando QR…' : 'Enviando…') : api ? 'Enviar inscripción y generar QR' : 'Enviar inscripción y comprobante'}</button>
       </form>
     </div>
   )
@@ -416,7 +426,7 @@ function RegistrationCard({ reg, me, token, onChange }) {
             <div className="qr-instructions">
               <PaymentQr payload={qr.payload} imageUrl={qr.imageUrl} />
               <div>
-                <h3>{qr.auto ? 'Realiza el pago: se confirma solo' : 'Realiza el pago y sube tu comprobante'}</h3>
+                <h3>{qr.auto ? 'Realiza el pago y sube tu comprobante: se confirma solo' : 'Realiza el pago y sube tu comprobante'}</h3>
                 <p>{qr.instructions || 'Paga desde tu aplicación bancaria usando este QR.'}</p>
                 <p><strong>Referencia:</strong> {qr.reference}</p>
                 <p><strong>Monto:</strong> {money(current.amountCents, current.currency)}</p>
@@ -428,15 +438,12 @@ function RegistrationCard({ reg, me, token, onChange }) {
                 <p>{current.proof.note || 'El organizador solicitó un nuevo comprobante.'}</p>
               </div>
             )}
-            {qr.auto ? (
-              <div className="notice notice-warning">Esperando el pago… Esta pantalla se actualiza sola cuando el banco lo confirme.</div>
-            ) : (
-              <form className="proof-form" onSubmit={upload}>
-                <label>Comprobante de pago<input type="file" name="file" accept="image/*" required /></label>
-                <label>Número de transacción (opcional)<input name="reference" maxLength={80} /></label>
-                <button className="btn-primary" type="submit" disabled={busy}>{busy ? 'Subiendo…' : 'Enviar comprobante'}</button>
-              </form>
-            )}
+            {qr.auto && <div className="notice notice-warning">Esperando el pago… Esta pantalla se actualiza sola cuando el banco lo confirme.</div>}
+            <form className="proof-form" onSubmit={upload}>
+              <label>Comprobante de pago<input type="file" name="file" accept="image/*" required /></label>
+              <label>Número de transacción (opcional)<input name="reference" maxLength={80} /></label>
+              <button className="btn-primary" type="submit" disabled={busy}>{busy ? 'Subiendo…' : 'Enviar comprobante'}</button>
+            </form>
           </>
         )}
 
@@ -444,8 +451,12 @@ function RegistrationCard({ reg, me, token, onChange }) {
           <div className="notice notice-success">¡Tu inscripción está confirmada! Nos vemos en la línea de partida.</div>
         )}
 
-        {current?.proof?.status === 'in_review' && (
-          <div className="notice notice-warning">Tu comprobante ya fue enviado. Un organizador lo revisará antes de confirmar la inscripción.</div>
+        {current?.status === 'pending' && current.proof?.status === 'in_review' && (
+          <div className="notice notice-warning">
+            {qr?.auto
+              ? 'Tu comprobante ya fue enviado. La inscripción se confirma automáticamente cuando el banco avise del pago.'
+              : 'Tu comprobante ya fue enviado. Un organizador lo revisará antes de confirmar la inscripción.'}
+          </div>
         )}
 
         {canPay && (
