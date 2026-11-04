@@ -117,7 +117,7 @@ export default function Inscripcion({ carrera, inscripcion: inicial, sesion, onC
               }} />
           )}
           {paso === 'pago' && pago && (
-            <PasoPago pago={pago} token={token} onError={setError}
+            <PasoPago pago={pago} carrera={carrera} token={token} onError={setError}
               onPagado={async () => {
                 cambiar(await getRegistration(reg.id, token).catch(() => ({ ...reg, status: 'confirmed' })))
                 setPaso('listo')
@@ -305,7 +305,7 @@ function PasoResumen({ reg, carrera, onListo, onAtras, onError }) {
   )
 }
 
-function PasoPago({ pago, token, onPagado, onNuevoQr, onError }) {
+function PasoPago({ pago, carrera, token, onPagado, onNuevoQr, onError }) {
   const qr = pago.methodDetails?.manualQr || {}
   const auto = !!qr.auto
   const [prueba, setPrueba] = useState(null)
@@ -339,11 +339,18 @@ function PasoPago({ pago, token, onPagado, onNuevoQr, onError }) {
   }
 
   const enRevision = prueba?.status === 'in_review'
+  // Centro del QR: logoQrUrl de la carrera (viaja en el pago); si el pago no lo trae, el logo de la carrera
+  const logo = qr.logoUrl || carrera?.coverUrl || null
+  const pasos = [
+    ['Escaneá el QR', 'Desde la app de tu banco.'],
+    auto ? ['Pagá el monto exacto', `${bs(pago.amountCents, pago.currency)}, sin redondear.`] : ['Escribí la glosa', `Poné ${qr.reference} en la transferencia.`],
+    ['Subí tu comprobante', 'La captura del pago, aquí abajo.'],
+  ]
 
   return (
     <div className="rn-pay">
       <div className="rn-pay-qr">
-        <QrPago payload={qr.payload} imageUrl={qr.imageUrl} logoUrl={qr.logoUrl} />
+        <QrPago payload={qr.payload} imageUrl={qr.imageUrl} logoUrl={logo} />
         {t && (
           <p className={`rn-timer${expiro ? ' is-bad' : t.total < 6e5 ? ' is-warn' : ''}`} aria-live="off">
             <Icon name="clock" size={15} />
@@ -354,39 +361,47 @@ function PasoPago({ pago, token, onPagado, onNuevoQr, onError }) {
       </div>
 
       <div className="rn-pay-info">
-        <span className="rn-kicker">Monto a pagar</span>
-        <p className="rn-amount">{bs(pago.amountCents, pago.currency)}</p>
-        {qr.reference && (
-          <div className="rn-ref">
-            <div><small>{auto ? 'Referencia' : 'Glosa obligatoria'}</small><strong className="rn-mono">{qr.reference}</strong></div>
-            <button type="button" className="rn-icon-btn" onClick={copiar} aria-label="Copiar referencia">
-              <Icon name={copiado ? 'check' : 'copy'} size={18} />
-            </button>
-          </div>
-        )}
-        <ol className="rn-howto">
-          <li>Abrí la app de tu banco y escaneá el QR.</li>
-          {auto ? <li>Pagá el monto <b>exacto</b>.</li>
-            : <li>Escribí la glosa <b>{qr.reference}</b> en la transferencia.</li>}
-          <li>Subí la captura del comprobante aquí abajo.</li>
+        <div className="rn-pay-total">
+          <div><span className="rn-kicker">Monto a pagar</span><p className="rn-amount">{bs(pago.amountCents, pago.currency)}</p></div>
+          {qr.reference && (
+            <div className="rn-ref">
+              <div><small>{auto ? 'Referencia' : 'Glosa obligatoria'}</small><strong className="rn-mono">{qr.reference}</strong></div>
+              <button type="button" className="rn-icon-btn" onClick={copiar} aria-label="Copiar referencia">
+                <Icon name={copiado ? 'check' : 'copy'} size={18} />
+              </button>
+            </div>
+          )}
+        </div>
+
+        <ol className="rn-steps">
+          {pasos.map(([titulo, txt], i) => <li key={i}><b>{i + 1}</b><div><strong>{titulo}</strong><small>{txt}</small></div></li>)}
         </ol>
-        {qr.instructions && <p className="rn-note"><Icon name="info" size={16} />{qr.instructions}</p>}
+        {/* Con la API de pagos, instructions es el aviso de vencimiento de la pasarela: no se muestra */}
+        {!auto && qr.instructions && <p className="rn-note"><Icon name="info" size={16} />{qr.instructions}</p>}
 
         {enRevision ? (
           <div className="rn-waiting is-ok"><span className="rn-pulse" />Comprobante recibido. Lo estamos revisando; te avisamos al confirmar.</div>
         ) : (
           <form className="rn-proof" onSubmit={e => { e.preventDefault(); enviar(async () => setPrueba(await uploadPaymentProof(pago.id, archivo, refBanco, token))) }}>
+            <h3 className="rn-proof-title"><Icon name="receipt" size={18} />Comprobante de pago</h3>
             {prueba?.status === 'rejected' && (
               <p className="rn-error" role="alert"><Icon name="alert" size={16} />Rechazamos tu comprobante{prueba.note ? `: ${prueba.note}` : ''}. Subí otro.</p>
             )}
-            <p className="rn-warn" role="note"><Icon name="alert" size={16} /><span><b>Subí tu comprobante.</b> Sin comprobante no vamos a poder atender reclamos si tu pago no se acredita correctamente.</span></p>
+            <p className="rn-warn" role="note"><Icon name="alert" size={16} /><span><b>Es obligatorio.</b> Sin comprobante no vamos a poder atender reclamos si tu pago no se acredita correctamente.</span></p>
             <label className={`rn-drop${archivo ? ' has-file' : ''}`}>
               <input type="file" accept="image/*" required onChange={e => setArchivo(e.target.files?.[0] || null)} />
-              {vista ? <img src={vista} alt="Vista previa del comprobante" /> : (<><Icon name="upload" size={26} /><span>Tocá para subir la captura del comprobante</span></>)}
+              {vista ? (<>
+                <img src={vista} alt="Vista previa del comprobante" />
+                <span className="rn-drop-file"><Icon name="check" size={16} />{archivo.name}<em>Cambiar</em></span>
+              </>) : (<>
+                <span className="rn-drop-icon"><Icon name="upload" size={24} /></span>
+                <strong>Subí la captura del comprobante</strong>
+                <small>Tocá para elegir una imagen · JPG o PNG</small>
+              </>)}
             </label>
             <Campo label="N.º de transacción (opcional)"><input value={refBanco} onChange={e => setRefBanco(e.target.value)} maxLength={80} /></Campo>
-            <button className="rn-btn is-accent" disabled={!archivo || enviando || expiro}>{enviando ? <span className="rn-spin" /> : <Icon name="upload" size={18} />}Enviar comprobante</button>
-            {auto && <div className="rn-waiting"><span className="rn-pulse" />Esperando tu pago… si se acredita antes, se confirma solo.</div>}
+            <button className="rn-btn is-accent is-block" disabled={!archivo || enviando || expiro}>{enviando ? <span className="rn-spin" /> : <Icon name="upload" size={18} />}Enviar comprobante</button>
+            {auto && <p className="rn-waiting"><span className="rn-pulse" />Esperando tu pago… si se acredita antes, se confirma solo.</p>}
           </form>
         )}
       </div>

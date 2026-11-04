@@ -320,6 +320,7 @@
 
 /* Pago */
 .rn-pay { display: grid; grid-template-columns: auto 1fr; gap: 24px; align-items: start }
+.rn-pay-qr { position: sticky; top: 0 }
 .rn-pay-qr { display: grid; justify-items: center; gap: 12px }
 .rn-pay-info { display: grid; gap: 14px; align-content: start }
 .rn-amount { margin: -6px 0 0; font-size: 32px; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums }
@@ -336,6 +337,23 @@
 .rn-drop:hover, .rn-drop:focus-within { border-color: var(--p); background: var(--p-soft) }
 .rn-drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer }
 .rn-drop img { max-height: 200px; border-radius: var(--r-sm); animation: rn-pop var(--slow) var(--spring) }
+.rn-drop strong { font-weight: 600; color: var(--ink) } .rn-drop small { font-size: 12px; font-weight: 400; color: var(--muted) }
+.rn-drop-icon { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: #fff; color: var(--p-deep); box-shadow: var(--sh); transition: transform var(--base) var(--spring) }
+.rn-drop:hover .rn-drop-icon { transform: translateY(-3px) }
+.rn-drop.has-file { border-style: solid; border-color: var(--ok); background: #F6FEF9 }
+.rn-drop-file { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; color: var(--ok); font-size: 13px; overflow-wrap: anywhere }
+.rn-drop-file em { font-style: normal; color: var(--p-deep); text-decoration: underline; margin-left: 4px }
+.rn-pay-total { display: grid; gap: 12px; padding: 18px; border-radius: var(--r-lg); background: var(--bg) }
+.rn-pay-total .rn-amount { margin: 2px 0 0 }
+.rn-pay-total .rn-ref { background: #fff; box-shadow: inset 0 0 0 1px var(--line) }
+.rn-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px }
+.rn-steps li { position: relative; display: flex; gap: 12px; align-items: flex-start }
+.rn-steps li:not(:last-child)::after { content: ''; position: absolute; left: 13px; top: 30px; bottom: -10px; width: 2px; border-radius: 2px; background: var(--p-soft) }
+.rn-steps b { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--grad); color: #fff; font-size: 13px; font-weight: 600 }
+.rn-steps strong { display: block; font-size: 14px; font-weight: 600; line-height: 1.3 } .rn-steps small { color: var(--muted); font-size: 13px; overflow-wrap: anywhere }
+.rn-proof { padding: 18px; border-radius: var(--r-lg); box-shadow: inset 0 0 0 1.5px var(--line) }
+.rn-proof-title { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 600 } .rn-proof-title svg { color: var(--p) }
+p.rn-waiting { margin: 0 }
 
 /* QR (BrandedQr): tarjeta blanca, la zona silenciosa es su padding */
 .rn-qr { display: grid; justify-items: center }
@@ -419,7 +437,7 @@
   .rn-profile, .rn-promo-grid { grid-template-columns: 1fr }
   .rn-id { position: static }
   .rn-poster { min-height: 0; aspect-ratio: 4 / 5; max-height: 60vh }
-  .rn-pay { grid-template-columns: 1fr } .rn-pay-qr { justify-self: center }
+  .rn-pay { grid-template-columns: 1fr } .rn-pay-qr { position: static; justify-self: center }
 }
 @media (max-width: 760px) {
   .rn { padding-bottom: 100px }
