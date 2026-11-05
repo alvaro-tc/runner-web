@@ -237,13 +237,32 @@ export async function uploadPaymentProof(paymentId, file, reference, token) {
 
 
 // Cobros con su comprobante: GET /admin/payments devuelve { data, meta: { total, page, pageSize } }
-export async function getAdminPayments(token, { q = '', status = '', marathonId = '', page = 1, pageSize = 20 } = {}) {
-  const params = new URLSearchParams({ page, pageSize })
-  if (q) params.append('q', q)
-  if (status) params.append('status', status)
-  if (marathonId) params.append('marathonId', marathonId)
-  return fetchApi(`/admin/payments?${params}`, { token, withMeta: true })
+// channel: 'qr' | 'api' | 'fisico'; validatedById: quien cobro o valido
+const filtrosPago = (f, extra = {}) => {
+  const params = new URLSearchParams(extra)
+  for (const k of ['q', 'status', 'marathonId', 'channel', 'validatedById']) if (f[k]) params.append(k, f[k])
+  return params
 }
+
+export async function getAdminPayments(token, { page = 1, pageSize = 20, ...f } = {}) {
+  return fetchApi(`/admin/payments?${filtrosPago(f, { page, pageSize })}`, { token, withMeta: true })
+}
+
+// Lo cobrado (pagado) con los mismos filtros: { paidCents, paidCount, byValidator: [{ id, name, paidCents, paidCount }] }
+export const getPaymentsSummary = (token, f = {}) =>
+  fetchApi(`/admin/payments/summary?${filtrosPago({ ...f, status: '' })}`, { token })
+
+// Anula la inscripcion: devuelve el pago y libera el cupo. Solo admin (inscritas.anular)
+export const refundPayment = (token, paymentId, reason) =>
+  fetchApi(`/admin/payments/${paymentId}/refund`, { method: 'POST', body: JSON.stringify({ reason }), token })
+
+// Inscripcion en fisico: el organizador cobro en efectivo
+export const createManualRegistration = (token, marathonId, data) =>
+  fetchApi(`/admin/marathons/${marathonId}/manual-registrations`, { method: 'POST', body: JSON.stringify(data), token })
+
+// Preferencias de la cuenta: aqui vive la carrera elegida en el panel (marathonId)
+export const getPreferences = token => fetchApi('/users/me/preferences', { token })
+export const savePreferences = (token, data) => fetchApi('/users/me/preferences', { method: 'PATCH', body: JSON.stringify(data), token })
 
 export async function confirmTransfer(paymentId, token) {
   return fetchApi(`/admin/payments/${paymentId}/confirm-transfer`, {
@@ -307,11 +326,8 @@ export async function downloadRegistrantsCsv(token, marathon) {
 }
 
 // Mismos filtros que getAdminPayments, pero sin paginar: el CSV llega como archivo
-export async function downloadPaymentsCsv(token, { q = '', status = '', marathonId = '' } = {}) {
-  const params = new URLSearchParams()
-  if (q) params.append('q', q)
-  if (status) params.append('status', status)
-  if (marathonId) params.append('marathonId', marathonId)
+export async function downloadPaymentsCsv(token, f = {}) {
+  const params = filtrosPago(f)
   const res = await fetchConToken(`${BASE}/admin/payments.csv?${params}`, {}, token)
   if (!res.ok) {
     const json = await res.json().catch(() => null)
@@ -320,7 +336,7 @@ export async function downloadPaymentsCsv(token, { q = '', status = '', marathon
   const url = URL.createObjectURL(await res.blob())
   const a = document.createElement('a')
   a.href = url
-  a.download = 'cobros.csv'
+  a.download = `cobros${f.channel ? '-' + f.channel : ''}.csv`
   a.click()
   URL.revokeObjectURL(url)
 }

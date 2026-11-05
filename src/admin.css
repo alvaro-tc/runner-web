@@ -2,12 +2,16 @@
    Mismo lenguaje que el sitio: fondo lavanda, tarjetas blancas flotantes, píldoras violetas.
    Escritorio: barra lateral con marca, módulos y tu cuenta; el contenido arranca a la misma
    altura que ella (simetría). Móvil: barra superior con marca y salida, módulos abajo. */
-.ad{
+/* Tokens en :root y no en .ad: los modales se montan en <body> (portal) y sin
+   esto el botón primario quedaba sin fondo — texto blanco sobre blanco. */
+:root{
   --ad-bg:#F4F2FF;--ad-card:#fff;--ad-ink:#1F1833;--ad-ink-2:#4A4361;--ad-muted:#6B6580;--ad-line:#E8E3F6;
   --ad-violet:#8B5CF6;--ad-violet-2:#7C3AED;--ad-deep:#4C1D95;--ad-night:#1C1238;--ad-lilac:#C4B5FD;--ad-veil:#EDE9FE;
   --ad-gold:#F4C542;--ad-ok:#16A34A;--ad-ok-bg:#DCFCE7;--ad-warn:#B45309;--ad-warn-bg:#FEF3C7;--ad-danger:#DC2626;--ad-danger-bg:#FEE2E2;
   --ad-r:20px;--ad-r-sm:12px;--ad-shadow:0 1px 2px rgba(42,33,64,.04),0 8px 24px rgba(42,33,64,.06);
   --ad-top:16px;--ad-tabs:0px;
+}
+.ad{
   display:grid;grid-template-columns:264px minmax(0,1fr);gap:0 8px;min-height:100vh;padding:var(--ad-top) 0 0 16px;background:var(--ad-bg);color:var(--ad-ink);font-family:Poppins,system-ui,sans-serif
 }
 .ad *:focus-visible{outline:3px solid var(--ad-lilac);outline-offset:2px}
@@ -423,6 +427,45 @@
 .ad-modal .modal-header .ad-hint{margin:.2rem 0 0}
 .ad-modal .modal-body{display:grid;gap:1rem}
 .ad-modal .modal-footer{display:flex;justify-content:flex-end;gap:.5rem}
+/* Solo el cuerpo hace scroll: las acciones (Aprobar/Rechazar) quedan siempre a la vista */
+.ad-modal{display:flex;flex-direction:column;overflow:hidden;color:var(--ad-ink);font-family:Poppins,system-ui,sans-serif}
+.ad-modal .modal-header,.ad-modal .modal-footer{flex:none}
+.ad-modal .modal-body{flex:1;min-height:0;overflow-y:auto}
+.ad-modal *:focus-visible{outline:3px solid var(--ad-lilac);outline-offset:2px}
+.ad-btn.is-ok{background:var(--ad-ok);color:#fff;box-shadow:0 6px 16px rgba(22,163,74,.28)}
+.ad-btn.is-ok:hover:not(:disabled){background:#15803D}
+.ad-btn.is-solid-danger{background:var(--ad-danger);color:#fff;box-shadow:none}
+.ad-btn.is-solid-danger:hover:not(:disabled){background:#B91C1C}
+.ad-modal .modal-footer .ad-spacer{flex:1}
+.ad-ok-note{display:flex;align-items:center;gap:.6rem;padding:.75rem 1rem;border-radius:var(--ad-r-sm);background:var(--ad-ok-bg);color:#166534;font-size:.88rem;font-weight:500}
+.ad-info-note{display:flex;align-items:center;gap:.6rem;padding:.75rem 1rem;border-radius:var(--ad-r-sm);background:var(--ad-veil);color:var(--ad-deep);font-size:.86rem}
+/* Decisión del cobro: dos tarjetas grandes, aprobar o rechazar */
+.ad-decide{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-top:.25rem}
+.ad-decide button{display:flex;flex-direction:column;align-items:flex-start;gap:.2rem;min-height:64px;padding:.75rem .9rem;border-radius:14px;border:1.5px solid var(--ad-line);background:#fff;text-align:left;color:var(--ad-ink);transition:border-color .15s,background .15s,box-shadow .15s}
+.ad-decide button strong{display:flex;align-items:center;gap:.4rem;font-size:.9rem}
+.ad-decide button small{font-size:.74rem;color:var(--ad-muted)}
+.ad-decide .is-approve[aria-pressed="true"]{border-color:var(--ad-ok);background:var(--ad-ok-bg);box-shadow:0 0 0 3px rgba(22,163,74,.15)}
+.ad-decide .is-reject[aria-pressed="true"]{border-color:var(--ad-danger);background:var(--ad-danger-bg);box-shadow:0 0 0 3px rgba(220,38,38,.12)}
+.ad-decide .is-approve strong svg{color:var(--ad-ok)}
+.ad-decide .is-reject strong svg{color:var(--ad-danger)}
+/* Totales por canal y por quien cobró */
+.ad-totals{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.75rem;margin-bottom:1rem}
+.ad-total{padding:.9rem 1rem;border-radius:16px;background:#fff;border:1px solid var(--ad-line);box-shadow:var(--ad-shadow)}
+.ad-total small{display:block;font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ad-muted)}
+.ad-total strong{display:block;font:800 1.35rem Montserrat,sans-serif;color:var(--ad-ink);margin-top:.15rem}
+.ad-total span{font-size:.78rem;color:var(--ad-muted)}
+.ad-total.is-main{background:linear-gradient(135deg,var(--ad-violet),var(--ad-deep));border-color:transparent;color:#fff}
+.ad-total.is-main small,.ad-total.is-main span,.ad-total.is-main strong{color:#fff}
+.ad-filters{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;margin-bottom:1rem}
+.ad-filters select{min-height:40px;padding:.45rem .8rem;border:1.5px solid var(--ad-line);border-radius:11px;background:#fff;font:inherit;font-size:.86rem;color:var(--ad-ink)}
+.ad-channel{display:inline-flex;align-items:center;gap:.3rem;padding:.15rem .55rem;border-radius:99px;font-size:.72rem;font-weight:700;background:var(--ad-veil);color:var(--ad-deep);white-space:nowrap}
+.ad-channel.is-api{background:#E0F2FE;color:#0369A1}
+.ad-channel.is-fisico{background:#FEF3C7;color:#92400E}
+.ad-linkbtn{display:inline-flex;align-items:center;gap:.35rem;min-height:36px;padding:.25rem .5rem;margin-left:-.5rem;border-radius:9px;color:var(--ad-violet-2);font-weight:600;font-size:.84rem;text-align:left}
+.ad-linkbtn:hover{background:var(--ad-veil)}
+.ad-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.ad-form-grid .is-span{grid-column:1/-1}
+@media(max-width:640px){.ad-form-grid,.ad-decide{grid-template-columns:1fr}}
 .ad-check{display:inline-flex;align-items:center;gap:.5rem;font-size:.88rem;color:var(--ad-ink-2)}
 .ad-check input{width:18px;height:18px;accent-color:var(--ad-violet)}
 .ad-pass{display:flex;gap:.4rem;align-items:center}

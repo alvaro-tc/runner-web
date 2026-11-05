@@ -7,7 +7,7 @@ import PanelRoles from './PanelRoles'
 import PanelAuditoria from './PanelAuditoria'
 import PanelPlataforma from './PanelPlataforma'
 import PanelPerfil from './PanelPerfil'
-import { getMyAccess } from './api'
+import { getMyAccess, getPreferences, savePreferences } from './api'
 import './admin.css'
 
 // Un solo panel para todo el equipo. Cada módulo aparece si el rol tiene su permiso
@@ -33,9 +33,19 @@ export default function PanelAdmin({ sesion, onLogout }) {
   const [error, setError] = useState('')
   const [modulo, setModulo] = useState(leerModulo)
 
+  // La carrera elegida se guarda en la cuenta (no en el navegador): al volver a
+  // entrar, desde cualquier equipo, se abre la misma. Se espera a tenerla antes
+  // de montar los módulos para no arrancar en otra y saltar.
+  const [carrera, setCarrera] = useState(null)
   useEffect(() => {
-    getMyAccess(token).then(setAcceso, e => setError(e.message))
+    Promise.all([getMyAccess(token), getPreferences(token).catch(() => null)])
+      .then(([a, p]) => { setCarrera(p?.marathonId || ''); setAcceso(a) }, e => setError(e.message))
   }, [])
+  function guardarCarrera(id) {
+    if (!id || id === carrera) return
+    setCarrera(id)
+    savePreferences(token, { marathonId: id }).catch(() => {})
+  }
 
   const permisos = acceso?.permissions || []
   const puede = p => permisos.includes(p)
@@ -91,7 +101,7 @@ export default function PanelAdmin({ sesion, onLogout }) {
             <p>Pedile a quien administra los roles que le asigne permisos a <b>{acceso.roleName}</b>.</p>
           </div>
         )}
-        {actual && <actual.Vista key={actual.key} sesion={sesion} puede={puede} onMe={setYo} />}
+        {actual && <actual.Vista key={actual.key} sesion={sesion} puede={puede} onMe={setYo} carrera={carrera} onCarrera={guardarCarrera} />}
       </main>
     </div>
   )

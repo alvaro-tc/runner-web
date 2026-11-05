@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import DonationReceipt from './components/DonationReceipt'
 import Clasificacion from './Clasificacion'
+import InscripcionFisica from './InscripcionFisica'
+import { ModalCobro, Canal } from './PanelCobros'
 import { DailyChart, Donut, Funnel, HBars, Icon, Sparkline } from './components/AdminCharts'
 import {
   getAdminMarathons,
@@ -81,9 +83,7 @@ function formDesde(m) {
   }
 }
 
-function leerGuardada() {
-  try { return localStorage.getItem('admin.carrera') || '' } catch { return '' }
-}
+
 
 const miniatura = c => c.logoHorizontalUrl || c.coverUrl || c.logoVerticalUrl
 
@@ -99,11 +99,11 @@ function Miniatura({ carrera, size = 40 }) {
 // Cada pestaña con el permiso que la abre. Un veedor (carreras.ver + inscritas.ver) solo ve Inscritas.
 const VISTAS_PERMISO = { resumen: 'resumen.ver', editar: 'carreras.editar', inscritas: 'inscritas.ver', clasificacion: 'carreras.ver' }
 
-export default function PanelCarreras({ sesion, puede = () => true }) {
+export default function PanelCarreras({ sesion, puede = () => true, carrera: carreraPref, onCarrera }) {
   const token = sesion.accessToken
   const vistas = VISTAS.filter(([k]) => puede(VISTAS_PERMISO[k]))
   const [carreras, setCarreras] = useState([])
-  const [selId, setSelId] = useState(leerGuardada)
+  const [selId, setSelId] = useState(carreraPref || '')
   const [tabPedida, setTab] = useState('resumen')
   const [detalle, setDetalle] = useState(null)
   const [stats, setStats] = useState(null)
@@ -138,7 +138,7 @@ export default function PanelCarreras({ sesion, puede = () => true }) {
 
   useEffect(() => {
     if (!selId) return
-    try { localStorage.setItem('admin.carrera', selId) } catch {}
+    onCarrera?.(selId)
     setDetalle(null); setStats(null)
     cargarCarrera(selId)
   }, [selId])
@@ -204,7 +204,7 @@ export default function PanelCarreras({ sesion, puede = () => true }) {
             ? <EditorCarrera key={detalle.id} token={token} carrera={detalle} onCambio={setDetalle} onGuardado={refrescar}
                 onEliminada={() => { setSelId(''); cargarCarreras(); setTab('resumen') }} onError={setError} />
             : <div className="ad-loading"><span className="ad-spinner" /> Cargando carrera…</div>)}
-          {tab === 'inscritas' && <Inscritas key={sel.id} token={token} carrera={sel} />}
+          {tab === 'inscritas' && <Inscritas key={sel.id} token={token} carrera={sel} puede={puede} />}
           {tab === 'clasificacion' && <Clasificacion key={sel.id} token={token} carrera={sel} editable={editor} />}
         </>
       )}
@@ -749,7 +749,7 @@ function Accion({ titulo, desc, children }) {
   return <div className="ad-action"><div><strong>{titulo}</strong><small>{desc}</small></div>{children}</div>
 }
 
-function Inscritas({ token, carrera }) {
+function Inscritas({ token, carrera, puede }) {
   const [filas, setFilas] = useState([])
   const [meta, setMeta] = useState({ total: 0, totalPages: 1 })
   const [page, setPage] = useState(1)
@@ -757,6 +757,15 @@ function Inscritas({ token, carrera }) {
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
   const [recibo, setRecibo] = useState(null)
+  const [pago, setPago] = useState(null)
+  const [fisica, setFisica] = useState(false)
+  const [aviso, setAviso] = useState('')
+
+  // La fila de inscrita con la forma que espera la ficha del cobro
+  const comoCobro = r => ({
+    ...r.payment, runner: r.runner, marathon: r.marathon, amountCents: r.payment?.amountCents ?? r.totalCents,
+    bibNumber: r.bibNumber, runnerCi: r.docId, runnerPhone: r.phone, runnerEmail: r.email, createdAt: r.createdAt,
+  })
 
   async function cargar(p = page) {
     setCargando(true); setError('')
@@ -778,13 +787,15 @@ function Inscritas({ token, carrera }) {
   return (
     <section className="ad-card ad-table-card">
       <header className="ad-card-head">
-        <div><h2>Inscritas confirmadas <span className="ad-count">{num(meta.total)}</span></h2><p>Solo las que ya tienen el pago validado.</p></div>
+        <div><h2>Inscritas confirmadas <span className="ad-count">{num(meta.total)}</span></h2><p>Solo las que ya tienen el pago validado. Tocá “Validado por” para ver el comprobante.</p></div>
+        {puede('inscritas.manual') && <button className="ad-btn is-primary" onClick={() => setFisica(true)}><Icon name="plus" />Inscribir en físico</button>}
         <form className="ad-search" onSubmit={buscar} role="search">
           <Icon name="search" size={16} />
           <input type="search" placeholder="Nombre, CI, celular o email" value={busqueda} onChange={e => setBusqueda(e.target.value)} aria-label="Buscar inscrita" />
           <button className="ad-btn is-sm is-primary">Buscar</button>
         </form>
       </header>
+      {aviso && <p className="ad-ok-note" role="status" style={{ margin: '0 1.4rem 1rem' }}><Icon name="check" />{aviso}</p>}
       {error && <p className="ad-alert" role="alert"><Icon name="alert" />{error}</p>}
       {cargando ? <div className="ad-skel ad-skel-table" /> : filas.length === 0 ? (
         <div className="ad-chart-empty"><Icon name="users" size={22} /><p>{busqueda ? 'Nadie coincide con esa búsqueda.' : 'Todavía no hay inscritas con el pago validado.'}</p></div>
@@ -792,7 +803,7 @@ function Inscritas({ token, carrera }) {
         <>
           <div className="ad-table-wrap">
             <table className="dash-table ad-table">
-              <thead><tr><th>Corredora</th><th>CI</th><th>Celular</th><th>Dorsal</th><th>Total</th><th><span className="sr-only">Recibo</span></th></tr></thead>
+              <thead><tr><th>Corredora</th><th>CI</th><th>Celular</th><th>Dorsal</th><th>Total</th><th>Validado por</th><th><span className="sr-only">Recibo</span></th></tr></thead>
               <tbody>
                 {filas.map(r => (
                   <tr key={r.id}>
@@ -801,6 +812,13 @@ function Inscritas({ token, carrera }) {
                     <td>{r.phone || '—'}</td>
                     <td>{r.bibNumber ? <span className="ad-bib">{r.bibNumber}</span> : '—'}</td>
                     <td className="ad-num">{bs(r.totalCents)}</td>
+                    <td>{r.payment ? (
+                      <button className="ad-linkbtn" onClick={() => setPago(comoCobro(r))} aria-label={`Ver pago de ${r.runner}: validado por ${r.payment.validatedBy || 'sin dato'}`}>
+                        <Icon name="eye" size={15} />{r.payment.validatedBy || 'Sin dato'}
+                      </button>
+                    ) : '—'}
+                      {r.payment && <div className="cell-sub" style={{ display: 'flex', gap: '.35rem', alignItems: 'center' }}><Canal c={r.payment.channel} />{r.payment.paidAt && new Date(r.payment.paidAt).toLocaleDateString('es-BO')}</div>}
+                    </td>
                     <td><button className="ad-btn is-sm is-ghost" onClick={() => setRecibo({
                       receiptNumber: String(r.id).slice(-8).toUpperCase(), paymentId: r.id, donor: r.runner, concept: r.marathon,
                       amountCents: r.totalCents, currency: 'Bolivianos', currencySymbol: 'Bs', date: new Date(),
@@ -820,6 +838,10 @@ function Inscritas({ token, carrera }) {
         </>
       )}
       {recibo && <DonationReceipt data={recibo} onClose={() => setRecibo(null)} />}
+      {pago && <ModalCobro token={token} pago={pago} valida={false} anula={puede('inscritas.anular')}
+        onCerrar={() => setPago(null)} onListo={msg => { setPago(null); setAviso(msg); cargar(page) }} />}
+      {fisica && <InscripcionFisica token={token} carrera={carrera} onCerrar={() => setFisica(false)}
+        onListo={msg => { setFisica(false); setAviso(msg); cargar(page) }} />}
     </section>
   )
 }
