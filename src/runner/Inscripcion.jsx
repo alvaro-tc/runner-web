@@ -18,6 +18,17 @@ const PASOS = [
 ]
 const vencido = p => p?.expiresAt && new Date(p.expiresAt) <= new Date()
 
+// ponytail: texto provisional del deslinde, reemplazar por el texto legal definitivo
+const DESLINDE = [
+  'Declaro que participo de manera voluntaria en esta carrera y que me encuentro en buenas condiciones físicas y de salud para realizarla, sin padecer enfermedades o lesiones que me lo impidan.',
+  'Conozco los riesgos propios de una competencia de atletismo en vía pública (caídas, lesiones, deshidratación, golpes de calor, problemas cardíacos, entre otros) y los asumo bajo mi exclusiva responsabilidad.',
+  'Libero de toda responsabilidad a los organizadores, patrocinadores, voluntarios y autoridades por cualquier accidente, lesión, pérdida o daño que pudiera sufrir antes, durante o después del evento.',
+  'Me comprometo a respetar el recorrido, las indicaciones del personal de la organización y las normas de tránsito, y a portar mi número de corredor en un lugar visible.',
+  'Autorizo a la organización a brindarme atención médica de emergencia en caso de ser necesario, y acepto que los gastos derivados corren por mi cuenta.',
+  'Autorizo el uso de mi nombre, imagen y resultados en fotografías, videos y publicaciones relacionadas con el evento, sin derecho a compensación.',
+  'Entiendo que la inscripción es personal e intransferible y que el monto abonado no es reembolsable, salvo cancelación del evento por parte de la organización.',
+]
+
 // Inscripcion de punta a punta. `inscripcion` llega cuando se retoma una ya empezada.
 export default function Inscripcion({ carrera, inscripcion: inicial, sesion, onClose, onCambio, onVerRecibo }) {
   const token = sesion.accessToken
@@ -274,8 +285,16 @@ function PasoOpciones({ detalle, reg, onListo, onAtras, onError }) {
 
 function PasoResumen({ reg, carrera, onListo, onAtras, onError }) {
   const [acepta, setAcepta] = useState(false)
+  const [leido, setLeido] = useState(false)
   const [enviando, enviar] = useEnvio(onError)
   const pd = reg?.personalData || {}
+  const deslinde = useRef(null)
+  // Leido = llego al fondo (margen de 8px por redondeo); si el texto entra sin scroll, cuenta como leido
+  const alFondo = () => {
+    const el = deslinde.current
+    if (el && el.scrollTop + el.clientHeight >= el.scrollHeight - 8) setLeido(true)
+  }
+  useEffect(alFondo, [])
 
   return (
     <form className="rn-form" onSubmit={e => { e.preventDefault(); enviar(onListo) }}>
@@ -293,9 +312,19 @@ function PasoResumen({ reg, carrera, onListo, onAtras, onError }) {
           <li className="is-total"><span>Total</span><span>{bs(reg?.totalCents, reg?.currency || carrera.currency)}</span></li>
         </ul>
       </div>
-      <label className="rn-check">
-        <input type="checkbox" checked={acepta} onChange={e => setAcepta(e.target.checked)} required />
-        <span>Leí y acepto los <a href="/terminos/" target="_blank" rel="noreferrer">Términos y condiciones</a> y declaro estar en condiciones físicas para correr.</span>
+      <section className={`rn-waiver${leido ? ' is-read' : ''}`} aria-labelledby="rn-waiver-title">
+        <h4 id="rn-waiver-title"><Icon name="alert" size={16} />Deslinde de responsabilidades</h4>
+        <div className="rn-waiver-text" ref={deslinde} onScroll={alFondo} tabIndex={0} aria-describedby="rn-waiver-hint">
+          {DESLINDE.map((t, i) => <p key={i}><b>{i + 1}.</b> {t}</p>)}
+        </div>
+        <p id="rn-waiver-hint" className={`rn-waiver-hint${leido ? ' is-ok' : ''}`} aria-live="polite">
+          <Icon name={leido ? 'check' : 'arrow'} size={14} />
+          {leido ? 'Leíste el deslinde completo' : 'Deslizá hasta el final para poder aceptar'}
+        </p>
+      </section>
+      <label className={`rn-check${leido ? '' : ' is-locked'}`}>
+        <input type="checkbox" checked={acepta} disabled={!leido} onChange={e => setAcepta(e.target.checked)} required />
+        <span>Leí y acepto el deslinde de responsabilidades y los <a href="/terminos/" target="_blank" rel="noreferrer">Términos y condiciones</a>, y declaro estar en condiciones físicas para correr.</span>
       </label>
       <div className="rn-actions">
         <button type="button" className="rn-btn is-outline" onClick={onAtras}>Atrás</button>

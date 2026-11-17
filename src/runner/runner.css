@@ -279,6 +279,16 @@
 .rn-check { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: var(--r); background: var(--bg); cursor: pointer; font-size: 14px }
 .rn-check input { width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--p-deep); flex: none }
 .rn-check a { color: var(--p-deep); font-weight: 600 }
+.rn-check.is-locked { opacity: .55; cursor: not-allowed } .rn-check.is-locked input { cursor: not-allowed }
+.rn-waiver { display: grid; gap: 10px; padding: 16px; border-radius: var(--r); border: 1px solid var(--line); background: var(--card) }
+.rn-waiver h4 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 15px; font-weight: 700; color: var(--ink) } .rn-waiver h4 svg { color: var(--warn) }
+.rn-waiver-text { max-height: 220px; overflow-y: auto; overscroll-behavior: contain; padding: 4px 14px 4px 2px; font-size: 14px; line-height: 1.6; color: var(--muted);
+  -webkit-mask-image: linear-gradient(#000 85%, transparent); mask-image: linear-gradient(#000 85%, transparent) }
+.rn-waiver-text:focus-visible { outline: 2px solid var(--p); outline-offset: 2px; border-radius: var(--r-sm) }
+.rn-waiver-text p { margin: 0 0 10px } .rn-waiver-text b { color: var(--p-deep) }
+.rn-waiver-hint { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 13px; font-weight: 600; color: var(--p-deep) }
+.rn-waiver-hint svg { transform: rotate(90deg); transition: transform var(--base) var(--ease) }
+.rn-waiver-hint.is-ok { color: var(--ok) } .rn-waiver-hint.is-ok svg { transform: none }
 .rn-actions { display: flex; justify-content: space-between; gap: 12px; margin-top: 6px; padding-top: 16px; border-top: 1px solid var(--line) }
 .rn-actions.is-center { justify-content: center; border: 0 }
 .rn-error, .rn-ok, .rn-note { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 12px 14px; border-radius: var(--r-sm); font-size: 14px; font-weight: 500 }
@@ -491,3 +501,4 @@ p.rn-waiting { margin: 0 }
 .rn-phone-list button[aria-selected='true'] { background: var(--p-soft); color: var(--p-dark); font-weight: 600 }
 .rn-phone-name { flex: 1 } .rn-phone-code { color: var(--muted); font-variant-numeric: tabular-nums }
 .rn-phone-list svg { color: var(--p-deep) }
+.rn-waiver.is-read .rn-waiver-text { -webkit-mask-image: none; mask-image: none }
