@@ -18,15 +18,20 @@ const PASOS = [
 ]
 const vencido = p => p?.expiresAt && new Date(p.expiresAt) <= new Date()
 
-// ponytail: texto provisional del deslinde, reemplazar por el texto legal definitivo
+// Terminos, condiciones y deslinde de responsabilidad del CAM RUN: [titulo, texto]
+const DESLINDE_INTRO = 'Al inscribirme y participar en el CAM RUN, declaro haber leído y comprendido en su totalidad las condiciones de participación y manifiesto lo siguiente:'
 const DESLINDE = [
-  'Declaro que participo de manera voluntaria en esta carrera y que me encuentro en buenas condiciones físicas y de salud para realizarla, sin padecer enfermedades o lesiones que me lo impidan.',
-  'Conozco los riesgos propios de una competencia de atletismo en vía pública (caídas, lesiones, deshidratación, golpes de calor, problemas cardíacos, entre otros) y los asumo bajo mi exclusiva responsabilidad.',
-  'Libero de toda responsabilidad a los organizadores, patrocinadores, voluntarios y autoridades por cualquier accidente, lesión, pérdida o daño que pudiera sufrir antes, durante o después del evento.',
-  'Me comprometo a respetar el recorrido, las indicaciones del personal de la organización y las normas de tránsito, y a portar mi número de corredor en un lugar visible.',
-  'Autorizo a la organización a brindarme atención médica de emergencia en caso de ser necesario, y acepto que los gastos derivados corren por mi cuenta.',
-  'Autorizo el uso de mi nombre, imagen y resultados en fotografías, videos y publicaciones relacionadas con el evento, sin derecho a compensación.',
-  'Entiendo que la inscripción es personal e intransferible y que el monto abonado no es reembolsable, salvo cancelación del evento por parte de la organización.',
+  ['Carácter del evento y participación voluntaria', 'Entiendo y acepto que el CAM RUN es un evento estrictamente recreativo (Social Run), no competitivo y sin fines de premiación por posiciones. Mi participación es libre y voluntaria, y declaro encontrarme en condiciones físicas y de salud adecuadas para la actividad. Se recomienda una evaluación médica previa ante cualquier condición o antecedente que pueda afectar la práctica deportiva.'],
+  ['Participación de menores de edad', 'La edad mínima de participación es de 6 años. Los menores de edad deberán estar debidamente inscritos y acompañados en todo momento durante el recorrido por su madre, padre o apoderado legal, quien asume la responsabilidad total de su cuidado y supervisión durante el evento.'],
+  ['Asunción de riesgos', 'Reconozco los riesgos inherentes a una caminata o carrera en vía pública o circuito, tales como caídas, golpes, lesiones, colisiones, fatiga, deshidratación, condiciones climáticas e irregularidades del terreno.'],
+  ['Cumplimiento de normas', 'Me comprometo a respetar el recorrido, las normas de convivencia y las indicaciones de LA ORGANIZACIÓN, autoridades e inspectores o personal de apoyo. LA ORGANIZACIÓN se reserva el derecho de retirar del evento a cualquier participante que ponga en riesgo su seguridad o la de terceros.'],
+  ['Liberación de responsabilidad', 'Asumo los riesgos derivados de mi participación y libero de toda responsabilidad a CAM RUN, sus organizadores, auspiciadores, aliados y proveedores por daños, pérdidas o perjuicios derivados de dichos riesgos o de mis propios actos, salvo en aquellos casos donde la ley no permita la exclusión de responsabilidad.'],
+  ['Entrega y uso del dorsal', 'El evento no incluye kit de corredor; únicamente se entregará un número o dorsal de participante. El dorsal es personal, único e intransferible, y su portación en un lugar visible es obligatoria durante todo el evento para fines de identificación y acceso al recorrido. Las fechas y puntos de recogida de dorsales serán comunicados por los canales oficiales.'],
+  ['Política de reembolso y modificaciones', 'El pago de la inscripción no es reembolsable ni transferible. Acepto que el evento podrá ser suspendido, reprogramado, modificado o cancelado por razones de fuerza mayor, caso fortuito, decisiones de la autoridad competente o situaciones ajenas al control de LA ORGANIZACIÓN.'],
+  ['Objetos personales', 'Declaro conocer que el evento no cuenta con servicio de guardarropa. Por lo tanto, cada participante es responsable de la custodia de sus pertenencias. LA ORGANIZACIÓN no se hace responsable por la pérdida, hurto, robo o deterioro de objetos personales durante el desarrollo del evento.'],
+  ['Derechos de imagen', 'Autorizo expresamente a LA ORGANIZACIÓN, auspiciadores y aliados a utilizar, reproducir y difundir mi imagen y la de los menores a mi cargo en fotografías o videos obtenidos durante la actividad. Esta autorización se otorga para fines promocionales, publicitarios e informativos en cualquier medio físico o digital, sin derecho a compensación económica.'],
+  ['Protección de datos personales', 'Otorgo mi consentimiento para el tratamiento de mis datos personales en conformidad con la Ley N.º 29733 (Ley de Protección de Datos Personales), para fines de gestión logística del evento, validación de participación y envío de información sobre futuras actividades. Puedo ejercer mis derechos de acceso, rectificación, cancelación u oposición a través del correo oficial de contacto de LA ORGANIZACIÓN.'],
+  ['Declaración jurada y aceptación digital', 'Declaro que la información registrada es verdadera, completa y actual. En el caso de menores de edad, la inscripción y aceptación de estas condiciones la realiza su madre, padre o apoderado legal. La marcación de la casilla de verificación (checkbox) es obligatoria y constituye la firma de conformidad para completar el proceso de inscripción.'],
 ]
 
 // Inscripcion de punta a punta. `inscripcion` llega cuando se retoma una ya empezada.
@@ -290,9 +295,12 @@ function PasoResumen({ reg, carrera, onListo, onAtras, onError }) {
   const pd = reg?.personalData || {}
   const deslinde = useRef(null)
   // Leido = llego al fondo (margen de 8px por redondeo); si el texto entra sin scroll, cuenta como leido
+  const [avance, setAvance] = useState(0)
   const alFondo = () => {
     const el = deslinde.current
-    if (el && el.scrollTop + el.clientHeight >= el.scrollHeight - 8) setLeido(true)
+    if (!el) return
+    setAvance((el.scrollTop + el.clientHeight) / el.scrollHeight)
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 8) setLeido(true)
   }
   useEffect(alFondo, [])
 
@@ -313,10 +321,14 @@ function PasoResumen({ reg, carrera, onListo, onAtras, onError }) {
         </ul>
       </div>
       <section className={`rn-waiver${leido ? ' is-read' : ''}`} aria-labelledby="rn-waiver-title">
-        <h4 id="rn-waiver-title"><Icon name="alert" size={16} />Deslinde de responsabilidades</h4>
+        <h4 id="rn-waiver-title"><Icon name="alert" size={16} />Términos, condiciones y deslinde de responsabilidad</h4>
         <div className="rn-waiver-text" ref={deslinde} onScroll={alFondo} tabIndex={0} aria-describedby="rn-waiver-hint">
-          {DESLINDE.map((t, i) => <p key={i}><b>{i + 1}.</b> {t}</p>)}
+          <p className="rn-waiver-intro">{DESLINDE_INTRO}</p>
+          <ol>
+            {DESLINDE.map(([titulo, texto]) => <li key={titulo}><strong>{titulo}</strong><p>{texto}</p></li>)}
+          </ol>
         </div>
+        <span className="rn-waiver-bar" style={{ '--prog': leido ? 1 : avance }} aria-hidden="true" />
         <p id="rn-waiver-hint" className={`rn-waiver-hint${leido ? ' is-ok' : ''}`} aria-live="polite">
           <Icon name={leido ? 'check' : 'arrow'} size={14} />
           {leido ? 'Leíste el deslinde completo' : 'Deslizá hasta el final para poder aceptar'}

@@ -282,10 +282,17 @@
 .rn-check.is-locked { opacity: .55; cursor: not-allowed } .rn-check.is-locked input { cursor: not-allowed }
 .rn-waiver { display: grid; gap: 10px; padding: 16px; border-radius: var(--r); border: 1px solid var(--line); background: var(--card) }
 .rn-waiver h4 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 15px; font-weight: 700; color: var(--ink) } .rn-waiver h4 svg { color: var(--warn) }
-.rn-waiver-text { max-height: 220px; overflow-y: auto; overscroll-behavior: contain; padding: 4px 14px 4px 2px; font-size: 14px; line-height: 1.6; color: var(--muted);
+.rn-waiver-text { max-height: min(320px, 45vh); overflow-y: auto; overscroll-behavior: contain; padding: 4px 14px 4px 2px; font-size: 14px; line-height: 1.6; color: var(--muted);
   -webkit-mask-image: linear-gradient(#000 85%, transparent); mask-image: linear-gradient(#000 85%, transparent) }
 .rn-waiver-text:focus-visible { outline: 2px solid var(--p); outline-offset: 2px; border-radius: var(--r-sm) }
-.rn-waiver-text p { margin: 0 0 10px } .rn-waiver-text b { color: var(--p-deep) }
+.rn-waiver h4 svg { flex: none }
+.rn-waiver-text p { margin: 0 } .rn-waiver-intro { margin-bottom: 12px !important; color: var(--ink) }
+.rn-waiver-text ol { margin: 0; padding-left: 22px; display: grid; gap: 12px }
+.rn-waiver-text li::marker { color: var(--p-deep); font-weight: 700 }
+.rn-waiver-text li strong { display: block; color: var(--ink); font-weight: 600; margin-bottom: 2px }
+.rn-waiver-bar { height: 4px; border-radius: 99px; background: var(--p-soft); overflow: hidden; position: relative }
+.rn-waiver-bar::after { content: ""; position: absolute; inset: 0; background: var(--grad); transform-origin: left; transform: scaleX(var(--prog, 0)); transition: transform var(--fast) linear }
+.rn-waiver.is-read .rn-waiver-bar::after { background: var(--ok) }
 .rn-waiver-hint { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 13px; font-weight: 600; color: var(--p-deep) }
 .rn-waiver-hint svg { transform: rotate(90deg); transition: transform var(--base) var(--ease) }
 .rn-waiver-hint.is-ok { color: var(--ok) } .rn-waiver-hint.is-ok svg { transform: none }
@@ -502,3 +509,4 @@ p.rn-waiting { margin: 0 }
 .rn-phone-name { flex: 1 } .rn-phone-code { color: var(--muted); font-variant-numeric: tabular-nums }
 .rn-phone-list svg { color: var(--p-deep) }
 .rn-waiver.is-read .rn-waiver-text { -webkit-mask-image: none; mask-image: none }
+@media (prefers-reduced-motion: reduce) { .rn-waiver-bar::after, .rn-waiver-hint svg { transition: none } }
